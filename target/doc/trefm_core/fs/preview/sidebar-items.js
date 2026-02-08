@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["is_binary","read_directory_tree","read_text_preview"],"struct":["TextPreview","TreeEntry"]};

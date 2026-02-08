@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["render","render_confirm_popup","render_help_popup","render_rename_popup","render_search_popup"]};

@@ -1,9 +1,0 @@
-(function() {
-    var implementors = Object.fromEntries([["portable_pty",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/fmt/trait.Display.html\" title=\"trait core::fmt::Display\">Display</a> for <a class=\"struct\" href=\"portable_pty/struct.ExitStatus.html\" title=\"struct portable_pty::ExitStatus\">ExitStatus</a>"]]],["russh_sftp",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/fmt/trait.Display.html\" title=\"trait core::fmt::Display\">Display</a> for <a class=\"enum\" href=\"russh_sftp/client/error/enum.Error.html\" title=\"enum russh_sftp::client::error::Error\">Error</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/fmt/trait.Display.html\" title=\"trait core::fmt::Display\">Display</a> for <a class=\"enum\" href=\"russh_sftp/protocol/enum.StatusCode.html\" title=\"enum russh_sftp::protocol::StatusCode\">StatusCode</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/fmt/trait.Display.html\" title=\"trait core::fmt::Display\">Display</a> for <a class=\"struct\" href=\"russh_sftp/protocol/struct.FilePermissions.html\" title=\"struct russh_sftp::protocol::FilePermissions\">FilePermissions</a>"]]],["trefm_core",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/fmt/trait.Display.html\" title=\"trait core::fmt::Display\">Display</a> for <a class=\"enum\" href=\"trefm_core/error/enum.CoreError.html\" title=\"enum trefm_core::error::CoreError\">CoreError</a>"]]]]);
-    if (window.register_implementors) {
-        window.register_implementors(implementors);
-    } else {
-        window.pending_implementors = implementors;
-    }
-})()
-//{"start":57,"fragment_lengths":[289,872,288]}

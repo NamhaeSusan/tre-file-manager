@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["client","de","extensions","protocol","ser","server"]};

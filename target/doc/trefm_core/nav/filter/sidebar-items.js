@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["SortDirection","SortField"],"fn":["filter_by_extension","filter_hidden","fuzzy_filter","sort_entries"],"struct":["FuzzyMatch"]};

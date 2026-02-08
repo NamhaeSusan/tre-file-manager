@@ -21,7 +21,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crossterm::{
-    event::{self, Event},
+    event::{self, Event, EnableBracketedPaste, DisableBracketedPaste},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -59,7 +59,7 @@ enum RemoteMessage {
 fn setup_terminal() -> anyhow::Result<Terminal<CrosstermBackend<io::Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableBracketedPaste)?;
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
     Ok(terminal)
@@ -67,7 +67,7 @@ fn setup_terminal() -> anyhow::Result<Terminal<CrosstermBackend<io::Stdout>>> {
 
 fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> anyhow::Result<()> {
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    execute!(terminal.backend_mut(), DisableBracketedPaste, LeaveAlternateScreen)?;
     terminal.show_cursor()?;
     Ok(())
 }
@@ -304,8 +304,18 @@ async fn run_app(
         }
 
         // 4. Poll for crossterm events
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
+        let poll_ms = if app.terminal_visible() { 10 } else { 100 };
+        if event::poll(Duration::from_millis(poll_ms))? {
+            let ev = event::read()?;
+            // Handle paste events — send entire text to PTY at once
+            if let Event::Paste(ref text) = ev {
+                if matches!(app.mode(), AppMode::Terminal) {
+                    if let Some(ref mut emu) = terminal_emu {
+                        emu.write_bytes(text.as_bytes());
+                    }
+                }
+            }
+            if let Event::Key(key) = ev {
                 let (action, new_input_state) =
                     handle_key(key, app.mode(), &input_state, app.keymap());
                 input_state = new_input_state;

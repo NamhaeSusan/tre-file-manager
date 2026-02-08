@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["bookmarks","filter","history","panel"]};

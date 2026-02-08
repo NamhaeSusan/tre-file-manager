@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["git_status_span","render_file_list"]};

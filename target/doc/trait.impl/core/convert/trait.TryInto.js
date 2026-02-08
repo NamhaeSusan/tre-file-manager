@@ -1,9 +1,0 @@
-(function() {
-    var implementors = Object.fromEntries([["russh_sftp",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/convert/trait.TryInto.html\" title=\"trait core::convert::TryInto\">TryInto</a>&lt;<a class=\"struct\" href=\"https://doc.rust-lang.org/1.86.0/alloc/vec/struct.Vec.html\" title=\"struct alloc::vec::Vec\">Vec</a>&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/1.86.0/std/primitive.u8.html\">u8</a>&gt;&gt; for <a class=\"struct\" href=\"russh_sftp/extensions/struct.FsyncExtension.html\" title=\"struct russh_sftp::extensions::FsyncExtension\">FsyncExtension</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/convert/trait.TryInto.html\" title=\"trait core::convert::TryInto\">TryInto</a>&lt;<a class=\"struct\" href=\"https://doc.rust-lang.org/1.86.0/alloc/vec/struct.Vec.html\" title=\"struct alloc::vec::Vec\">Vec</a>&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/1.86.0/std/primitive.u8.html\">u8</a>&gt;&gt; for <a class=\"struct\" href=\"russh_sftp/extensions/struct.HardlinkExtension.html\" title=\"struct russh_sftp::extensions::HardlinkExtension\">HardlinkExtension</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/convert/trait.TryInto.html\" title=\"trait core::convert::TryInto\">TryInto</a>&lt;<a class=\"struct\" href=\"https://doc.rust-lang.org/1.86.0/alloc/vec/struct.Vec.html\" title=\"struct alloc::vec::Vec\">Vec</a>&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/1.86.0/std/primitive.u8.html\">u8</a>&gt;&gt; for <a class=\"struct\" href=\"russh_sftp/extensions/struct.StatvfsExtension.html\" title=\"struct russh_sftp::extensions::StatvfsExtension\">StatvfsExtension</a>"]]]]);
-    if (window.register_implementors) {
-        window.register_implementors(implementors);
-    } else {
-        window.pending_implementors = implementors;
-    }
-})()
-//{"start":57,"fragment_lengths":[1672]}

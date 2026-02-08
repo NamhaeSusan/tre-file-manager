@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["data_deserialize","from_bytes"],"struct":["Deserializer"]};

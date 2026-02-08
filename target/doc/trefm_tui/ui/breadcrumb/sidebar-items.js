@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["dirs_or_home","render_breadcrumb"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["get_branch_info"],"struct":["BranchInfo"]};
