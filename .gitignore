@@ -1,4 +1,21 @@
+# Build
 /target
+
+# Editor
 *.swp
 *.swo
+*~
+.nvimlog
+.vim/
+.idea/
+.vscode/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Rust
+**/*.rs.bk
+
+# Debug
+*.log
