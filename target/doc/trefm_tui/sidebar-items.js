@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["handle_confirm_approved","install_panic_hook","main","restore_terminal","run_app","setup_terminal"],"mod":["app","input","render","ui"]};

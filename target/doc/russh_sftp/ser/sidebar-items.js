@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["data_serialize","to_bytes"],"struct":["Serializer"]};

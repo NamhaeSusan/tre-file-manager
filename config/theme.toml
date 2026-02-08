@@ -1,0 +1,38 @@
+[panel]
+dir_fg = "blue"
+symlink_fg = "cyan"
+hidden_fg = "dark_gray"
+selected_fg = "yellow"
+
+[statusbar]
+bg = "white"
+position_fg = "black"
+hidden_fg = "yellow"
+message_fg = "magenta"
+branch_clean_fg = "green"
+branch_dirty_fg = "yellow"
+
+[breadcrumb]
+bg = "dark_gray"
+home_fg = "cyan"
+separator_fg = "dark_gray"
+component_fg = "white"
+
+[preview]
+border_fg = "dark_gray"
+line_number_fg = "dark_gray"
+dir_title_fg = "blue"
+error_fg = "red"
+truncation_fg = "yellow"
+syntax_theme = "base16-ocean.dark"
+
+[popup]
+border_fg = "yellow"
+
+[git]
+modified_fg = "yellow"
+added_fg = "green"
+deleted_fg = "red"
+renamed_fg = "blue"
+untracked_fg = "gray"
+ignored_fg = "dark_gray"

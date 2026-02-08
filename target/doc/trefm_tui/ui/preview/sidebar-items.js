@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_preview_size","highlight_lines","render_directory_preview","render_file_preview","render_preview","syntax_set","theme"]};

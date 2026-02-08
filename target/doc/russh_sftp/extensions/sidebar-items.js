@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FSYNC","HARDLINK","LIMITS","STATVFS"],"struct":["FsyncExtension","HardlinkExtension","LimitsExtension","Statvfs","StatvfsExtension"]};

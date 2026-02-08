@@ -1,0 +1,26 @@
+[general]
+show_hidden = false
+default_sort = "name"        # name | size | date | type
+sort_dir_first = true
+confirm_delete = true
+
+[preview]
+enabled = true
+max_file_size = "10MB"       # Skip preview for files larger than this
+syntax_theme = "Dracula"
+image_protocol = "auto"      # auto | kitty | sixel | iterm2
+
+[git]
+enabled = true
+show_status = true
+show_branch = true
+
+[ui]
+panel_ratio = 0.4            # File list : preview ratio
+show_icons = true            # Nerd Font icons
+date_format = "%Y-%m-%d %H:%M"
+
+[terminal]
+shell = "auto"
+sync_cwd = true
+height_percent = 30

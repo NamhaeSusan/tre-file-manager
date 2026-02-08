@@ -1,0 +1,28 @@
+[package]
+name = "trefm-tui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "TUI frontend for TreFM file manager"
+
+[dependencies]
+trefm-core = { path = "../trefm-core" }
+ratatui = "0.29"
+crossterm = "0.28"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+syntect = "5"
+pulldown-cmark = "0.12"
+notify = "7"
+notify-debouncer-mini = "0.5"
+ratatui-image = { version = "4.2", default-features = false }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp", "webp", "ico", "tiff"] }
+portable-pty = "0.8"
+vt100 = "0.15"
+
+[dev-dependencies]
+tempfile = "3"
+git2 = "0.19"

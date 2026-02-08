@@ -1,0 +1,1 @@
+SubscriberBuilder<DefaultFields, Format, LevelFilter, {closure@crates/trefm-tui/src/main.rs:52:22: 52:24}>

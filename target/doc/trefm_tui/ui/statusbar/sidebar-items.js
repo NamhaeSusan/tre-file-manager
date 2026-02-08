@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["branch_info_span","format_size","render_statusbar"],"struct":["StatusBarProps"]};

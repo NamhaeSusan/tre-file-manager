@@ -1,0 +1,57 @@
+   0.134561541s  INFO prepare_target{force=false package_id=trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core) target="trefm_core"}: cargo::core::compiler::fingerprint: stale: changed env "CLIPPY_ARGS"
+   0.134570083s  INFO prepare_target{force=false package_id=trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core) target="trefm_core"}: cargo::core::compiler::fingerprint:        Some("-D__CLIPPY_HACKERY__warnings__CLIPPY_HACKERY__") != Some("")
+   0.135252041s  INFO prepare_target{force=false package_id=trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core) target="trefm_core"}: cargo::core::compiler::fingerprint: fingerprint dirty for trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("trefm_core", ["lib"], "/Users/kimtaeyun/tre-file-manager/crates/trefm-core/src/lib.rs", Edition2021) }
+   0.135260666s  INFO prepare_target{force=false package_id=trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core) target="trefm_core"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedEnv { var: "CLIPPY_ARGS", previous: Some("-D__CLIPPY_HACKERY__warnings__CLIPPY_HACKERY__"), current: Some("") }))
+   0.145309083s  INFO prepare_target{force=false package_id=trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core) target="trefm_core"}: cargo::core::compiler::fingerprint: fingerprint error for trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("trefm_core", ["lib"], "/Users/kimtaeyun/tre-file-manager/crates/trefm-core/src/lib.rs", Edition2021) }
+   0.145315958s  INFO prepare_target{force=false package_id=trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core) target="trefm_core"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/kimtaeyun/tre-file-manager/target/debug/.fingerprint/trefm-core-f1c1dd06abad87f4/test-lib-trefm_core`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: cargo_util::paths::read_bytes
+   2: cargo_util::paths::read
+   3: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   4: cargo::core::compiler::fingerprint::prepare_target
+   5: cargo::core::compiler::compile
+   6: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   7: cargo::ops::cargo_compile::compile_ws
+   8: cargo::ops::cargo_compile::compile_with_exec
+   9: cargo::ops::cargo_compile::compile
+  10: cargo::commands::check::exec
+  11: <cargo::cli::Exec>::exec
+  12: cargo::main
+  13: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  14: std::rt::lang_start::<()>::{closure#0}
+  15: std::rt::lang_start_internal
+  16: _main
+   0.159104333s  INFO prepare_target{force=false package_id=trefm-tui v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-tui) target="trefm-tui"}: cargo::core::compiler::fingerprint: fingerprint dirty for trefm-tui v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-tui)/Check { test: false }/TargetInner { name: "trefm-tui", doc: true, ..: with_path("/Users/kimtaeyun/tre-file-manager/crates/trefm-tui/src/main.rs", Edition2021) }
+   0.159111916s  INFO prepare_target{force=false package_id=trefm-tui v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-tui) target="trefm-tui"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "trefm_core" })
+   0.161836625s  INFO prepare_target{force=false package_id=trefm-tui v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-tui) target="trefm-tui"}: cargo::core::compiler::fingerprint: fingerprint error for trefm-tui v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-tui)/Check { test: true }/TargetInner { name: "trefm-tui", doc: true, ..: with_path("/Users/kimtaeyun/tre-file-manager/crates/trefm-tui/src/main.rs", Edition2021) }
+   0.161842833s  INFO prepare_target{force=false package_id=trefm-tui v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-tui) target="trefm-tui"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/kimtaeyun/tre-file-manager/target/debug/.fingerprint/trefm-tui-4d89f93fed92b65c/test-bin-trefm-tui`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: cargo_util::paths::read_bytes
+   2: cargo_util::paths::read
+   3: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   4: cargo::core::compiler::fingerprint::prepare_target
+   5: cargo::core::compiler::compile
+   6: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   7: cargo::ops::cargo_compile::compile_ws
+   8: cargo::ops::cargo_compile::compile_with_exec
+   9: cargo::ops::cargo_compile::compile
+  10: cargo::commands::check::exec
+  11: <cargo::cli::Exec>::exec
+  12: cargo::main
+  13: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  14: std::rt::lang_start::<()>::{closure#0}
+  15: std::rt::lang_start_internal
+  16: _main
+    Checking trefm-core v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-core)
+    Checking trefm-tui v0.1.0 (/Users/kimtaeyun/tre-file-manager/crates/trefm-tui)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.72s

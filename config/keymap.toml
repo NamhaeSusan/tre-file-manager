@@ -1,0 +1,46 @@
+[bindings]
+# Navigation
+j = "cursor_down"
+k = "cursor_up"
+h = "go_parent"
+l = "enter_dir"
+gg = "go_first"
+G = "go_last"
+Enter = "open"
+
+# File operations
+y = "yank"
+d = "delete"
+p = "pager"
+r = "rename"
+e = "edit_file"
+
+# Toggles and search
+"." = "toggle_hidden"
+"/" = "search"
+Space = "select_toggle"
+s = "sort_cycle"
+
+# Home
+"~" = "go_home"
+
+# Bookmarks
+b = "bookmark_add"
+"'" = "bookmark_go"
+
+# Features
+R = "recent_files"
+D = "duplicate_files"
+
+# Panels and misc
+Tab = "panel_toggle_dual"
+"1" = "panel_focus_left"
+"2" = "panel_focus_right"
+q = "quit"
+"?" = "help"
+":" = "command_palette"
+
+# Remote
+C = "remote_connect"
+
+# Terminal (Ctrl+t is hardcoded in input.rs)

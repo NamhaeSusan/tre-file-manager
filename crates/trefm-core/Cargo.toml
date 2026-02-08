@@ -1,0 +1,29 @@
+[package]
+name = "trefm-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core logic library for TreFM file manager"
+
+[dependencies]
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+tracing = "0.1"
+tokio = { version = "1", features = ["sync"] }
+git2 = "0.19"
+fuzzy-matcher = "0.3"
+sha2 = "0.10"
+serde_json = "1"
+image = { version = "0.25", default-features = false, features = ["png", "gif", "bmp", "ico", "tiff", "webp"] }
+lopdf = "0.34"
+unicode-normalization = "0.1"
+ratatui = "0.29"
+russh = "0.46"
+russh-sftp = "2.0.5"
+russh-keys = "0.46"
+async-trait = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["sync", "rt", "macros"] }

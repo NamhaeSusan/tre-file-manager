@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["copy_file","delete_file","move_file","read_directory","rename_file"]};

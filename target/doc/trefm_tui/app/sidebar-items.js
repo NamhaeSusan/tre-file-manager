@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AppMode","ConfirmAction"],"fn":["filter_hidden","load_branch_info","load_git_statuses"],"struct":["App","PanelState"]};
