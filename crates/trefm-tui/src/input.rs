@@ -124,6 +124,16 @@ pub enum InputAction {
     TerminalToggle,
     /// Unfocus the terminal (return to Normal mode).
     TerminalUnfocus,
+    /// Create a new tab.
+    TabNew,
+    /// Close current tab.
+    TabClose,
+    /// Switch to next tab.
+    TabNext,
+    /// Switch to previous tab.
+    TabPrev,
+    /// Select a specific tab by index (0-based).
+    TabSelect(usize),
     /// No action for this key.
     None,
 }
@@ -208,6 +218,20 @@ fn action_to_input_action(action: Action) -> InputAction {
         Action::PanelToggleDual => InputAction::PanelToggleDual,
         Action::PanelFocusLeft => InputAction::PanelFocus(0),
         Action::PanelFocusRight => InputAction::PanelFocus(1),
+        // Tab
+        Action::TabNew => InputAction::TabNew,
+        Action::TabClose => InputAction::TabClose,
+        Action::TabNext => InputAction::TabNext,
+        Action::TabPrev => InputAction::TabPrev,
+        Action::TabSelect1 => InputAction::TabSelect(0),
+        Action::TabSelect2 => InputAction::TabSelect(1),
+        Action::TabSelect3 => InputAction::TabSelect(2),
+        Action::TabSelect4 => InputAction::TabSelect(3),
+        Action::TabSelect5 => InputAction::TabSelect(4),
+        Action::TabSelect6 => InputAction::TabSelect(5),
+        Action::TabSelect7 => InputAction::TabSelect(6),
+        Action::TabSelect8 => InputAction::TabSelect(7),
+        Action::TabSelect9 => InputAction::TabSelect(8),
     }
 }
 
@@ -244,6 +268,13 @@ fn handle_normal_key(
             Some(action) => action_to_input_action(action),
             None => InputAction::None,
         },
+        // Alt+1~9: direct tab selection (hardcoded, not remappable)
+        KeyCode::Char(c @ '1'..='9') if key.modifiers.contains(KeyModifiers::ALT) => {
+            return (
+                InputAction::TabSelect((c as usize) - ('1' as usize)),
+                new_state,
+            );
+        }
         // Look up character keys in the keymap
         KeyCode::Char(c) => {
             let key_str = c.to_string();

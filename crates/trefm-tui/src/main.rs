@@ -21,7 +21,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crossterm::{
-    event::{self, Event, EnableBracketedPaste, DisableBracketedPaste},
+    event::{self, DisableBracketedPaste, EnableBracketedPaste, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -67,7 +67,11 @@ fn setup_terminal() -> anyhow::Result<Terminal<CrosstermBackend<io::Stdout>>> {
 
 fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> anyhow::Result<()> {
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), DisableBracketedPaste, LeaveAlternateScreen)?;
+    execute!(
+        terminal.backend_mut(),
+        DisableBracketedPaste,
+        LeaveAlternateScreen
+    )?;
     terminal.show_cursor()?;
     Ok(())
 }
@@ -829,6 +833,11 @@ async fn run_app(
                                                 }
                                             }
                                         }
+                                        InputAction::TabNew => app.with_new_tab(),
+                                        InputAction::TabClose => app.with_close_tab(),
+                                        InputAction::TabNext => app.with_next_tab(),
+                                        InputAction::TabPrev => app.with_prev_tab(),
+                                        InputAction::TabSelect(idx) => app.with_select_tab(idx),
                                         _ => app,
                                     }
                                 }
@@ -858,6 +867,12 @@ async fn run_app(
                             app
                         }
                     }
+                    // Tab actions
+                    InputAction::TabNew => app.with_new_tab(),
+                    InputAction::TabClose => app.with_close_tab(),
+                    InputAction::TabNext => app.with_next_tab(),
+                    InputAction::TabPrev => app.with_prev_tab(),
+                    InputAction::TabSelect(idx) => app.with_select_tab(idx),
                     InputAction::CommandPaletteCancel => app.with_mode(AppMode::Normal),
                     // Remote connect form actions
                     InputAction::RemoteConnectChar(c) => {
@@ -994,7 +1009,9 @@ async fn run_app(
                     if terminal_config.sync_cwd {
                         if let Some(ref mut emu) = terminal_emu {
                             if app.terminal_visible() && !matches!(app.mode(), AppMode::Terminal) {
-                                let cd_cmd = format!("cd '{}'\n", current_dir.display());
+                                let dir_str = current_dir.display().to_string();
+                                let escaped = dir_str.replace('\'', "'\\''");
+                                let cd_cmd = format!("cd '{}'\n", escaped);
                                 emu.write_bytes(cd_cmd.as_bytes());
                             }
                         }

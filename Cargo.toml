@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/trefm-core", "crates/trefm-tui"]
+members = ["crates/trefm-core", "crates/trefm-tui", "crates/trefm-web"]
 resolver = "2"
 
 [workspace.package]

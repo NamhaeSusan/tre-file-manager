@@ -405,27 +405,33 @@ pub enum Action {
     // File Operations
     Copy, Paste, Delete, Rename, Open,
     // View
-    ToggleHidden, Search, SortCycle, Pager,
-    // Editor
-    EditFile,
+    ToggleHidden, Search, SortCycle,
     // Bookmarks
     BookmarkAdd, BookmarkGo,
     // Features
     RecentFiles, DuplicateFiles,
+    // Pager
+    Pager,
+    // Editor
+    EditFile,
     // System
     Help, Quit, CommandPalette,
+    // Terminal
+    ToggleTerminal,
     // Remote
     RemoteConnect, RemoteDisconnect,
     // Panel
     PanelToggleDual, PanelFocusLeft, PanelFocusRight,
-    // Terminal
-    ToggleTerminal,
+    // Tab
+    TabNew, TabClose, TabNext, TabPrev,
+    TabSelect1, TabSelect2, TabSelect3, TabSelect4, TabSelect5,
+    TabSelect6, TabSelect7, TabSelect8, TabSelect9,
 }
 ```
 
 ### ActionCategory
 ```rust
-pub enum ActionCategory { Navigation, FileOps, View, Bookmark, Feature, System, Remote, Panel, Terminal }
+pub enum ActionCategory { Navigation, FileOps, View, Bookmark, Feature, System, Remote, Tab }
 ```
 
 | Method | Description |
@@ -450,7 +456,7 @@ pub struct ActionRegistry { /* Vec<ActionDescriptor> */ }
 
 | Method | Description |
 |--------|-------------|
-| `new() -> Self` | 31개 모든 액션 등록 |
+| `new() -> Self` | 44개 모든 액션 등록 |
 | `all() -> &[ActionDescriptor]` | 전체 디스크립터 반환 |
 | `fuzzy_search(query) -> Vec<&ActionDescriptor>` | 이름/설명/ID 기반 퍼지 검색 (점수순) |
 | `find_by_id(id) -> Option<Action>` | 문자열 ID → Action 변환 (keymap.toml 파싱용) |

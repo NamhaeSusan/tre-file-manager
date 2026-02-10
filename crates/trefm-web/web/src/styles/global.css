@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@import "@xterm/xterm/css/xterm.css";
+
+/* VS Code sidebar styles */
+.tree-item {
+  transition: background-color 0.1s ease;
+}
+
+.tree-item:hover {
+  background-color: #37373d;
+}
+
+.tree-item.selected {
+  background-color: #04395e;
+}
+
+.chevron {
+  transition: transform 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.indent-guide {
+  border-left: 1px solid #404040;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 3px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+
+/* Section header */
+.section-header {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 22px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #bbbbbb;
+  background-color: #252526;
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header:hover {
+  background-color: #2a2d2e;
+}

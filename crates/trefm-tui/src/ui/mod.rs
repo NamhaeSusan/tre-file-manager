@@ -10,3 +10,4 @@ pub mod popup;
 pub mod preview;
 pub mod remote_connect;
 pub mod statusbar;
+pub mod tab_bar;

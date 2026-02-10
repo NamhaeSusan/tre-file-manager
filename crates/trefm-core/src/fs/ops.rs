@@ -85,23 +85,46 @@ pub fn read_directory(path: &Path) -> CoreResult<Vec<FileEntry>> {
 /// - [`CoreError::NotFound`] if `src` does not exist.
 /// - [`CoreError::Io`] for any I/O failure during copy.
 pub fn copy_file(src: &Path, dest: &Path) -> CoreResult<()> {
-    if !src.exists() {
-        return Err(CoreError::NotFound(src.to_path_buf()));
-    }
+    let meta = std::fs::symlink_metadata(src).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            CoreError::NotFound(src.to_path_buf())
+        } else {
+            CoreError::Io(e)
+        }
+    })?;
 
-    if src.is_dir() {
-        copy_dir_recursive(src, dest)?;
+    if meta.is_dir() {
+        copy_dir_recursive(src, dest, 0)?;
     } else {
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        std::fs::copy(src, dest)?;
+        if meta.is_symlink() {
+            // Copy symlink as symlink
+            let link_target = std::fs::read_link(src)?;
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(&link_target, dest)?;
+            #[cfg(not(unix))]
+            std::fs::copy(src, dest)?;
+        } else {
+            std::fs::copy(src, dest)?;
+        }
     }
 
     Ok(())
 }
 
-fn copy_dir_recursive(src: &Path, dest: &Path) -> CoreResult<()> {
+/// Maximum recursion depth for copy_dir_recursive to prevent symlink loops.
+const MAX_COPY_DEPTH: usize = 64;
+
+fn copy_dir_recursive(src: &Path, dest: &Path, depth: usize) -> CoreResult<()> {
+    if depth > MAX_COPY_DEPTH {
+        return Err(CoreError::Io(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("maximum recursion depth ({MAX_COPY_DEPTH}) exceeded during copy"),
+        )));
+    }
+
     std::fs::create_dir_all(dest)?;
 
     for entry in std::fs::read_dir(src)? {
@@ -109,8 +132,18 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> CoreResult<()> {
         let entry_path = entry.path();
         let target = dest.join(entry.file_name());
 
-        if entry_path.is_dir() {
-            copy_dir_recursive(&entry_path, &target)?;
+        // Use entry.file_type() which does NOT follow symlinks
+        let ft = entry.file_type()?;
+
+        if ft.is_symlink() {
+            // Copy symlink as symlink rather than following it
+            let link_target = std::fs::read_link(&entry_path)?;
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(&link_target, &target)?;
+            #[cfg(not(unix))]
+            std::fs::copy(&entry_path, &target)?;
+        } else if ft.is_dir() {
+            copy_dir_recursive(&entry_path, &target, depth + 1)?;
         } else {
             std::fs::copy(&entry_path, &target)?;
         }
@@ -129,7 +162,8 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> CoreResult<()> {
 /// - [`CoreError::NotFound`] if `src` does not exist.
 /// - [`CoreError::Io`] for any I/O failure.
 pub fn move_file(src: &Path, dest: &Path) -> CoreResult<()> {
-    if !src.exists() {
+    // Use symlink_metadata to avoid TOCTOU and handle symlinks correctly
+    if std::fs::symlink_metadata(src).is_err() {
         return Err(CoreError::NotFound(src.to_path_buf()));
     }
 
@@ -150,13 +184,19 @@ pub fn move_file(src: &Path, dest: &Path) -> CoreResult<()> {
 /// - [`CoreError::NotFound`] if `path` does not exist.
 /// - [`CoreError::Io`] for any I/O failure during deletion.
 pub fn delete_file(path: &Path) -> CoreResult<()> {
-    if !path.exists() {
-        return Err(CoreError::NotFound(path.to_path_buf()));
-    }
+    // Use symlink_metadata: does NOT follow symlinks, avoids TOCTOU
+    let meta = std::fs::symlink_metadata(path).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            CoreError::NotFound(path.to_path_buf())
+        } else {
+            CoreError::Io(e)
+        }
+    })?;
 
-    if path.is_dir() {
+    if meta.is_dir() {
         std::fs::remove_dir_all(path)?;
     } else {
+        // Handles both regular files and symlinks
         std::fs::remove_file(path)?;
     }
 
@@ -254,7 +294,8 @@ fn collect_files_recursive(
 /// - [`CoreError::InvalidName`] if `new_name` is invalid.
 /// - [`CoreError::Io`] for any I/O failure.
 pub fn rename_file(path: &Path, new_name: &str) -> CoreResult<()> {
-    if !path.exists() {
+    // Use symlink_metadata to avoid TOCTOU and handle symlinks correctly
+    if std::fs::symlink_metadata(path).is_err() {
         return Err(CoreError::NotFound(path.to_path_buf()));
     }
 

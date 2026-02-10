@@ -26,6 +26,8 @@ pub struct Theme {
     pub git: GitTheme,
     #[serde(default)]
     pub terminal: TerminalTheme,
+    #[serde(default)]
+    pub tab: TabTheme,
 }
 
 impl Theme {
@@ -189,6 +191,26 @@ impl Default for TerminalTheme {
         Self {
             border_fg: "dark_gray".to_string(),
             title_fg: "green".to_string(),
+        }
+    }
+}
+
+/// Tab bar colors.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TabTheme {
+    pub active_fg: String,
+    pub active_bg: String,
+    pub inactive_fg: String,
+    pub inactive_bg: String,
+}
+
+impl Default for TabTheme {
+    fn default() -> Self {
+        Self {
+            active_fg: "white".to_string(),
+            active_bg: "blue".to_string(),
+            inactive_fg: "gray".to_string(),
+            inactive_bg: "dark_gray".to_string(),
         }
     }
 }

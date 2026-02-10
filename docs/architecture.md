@@ -4,14 +4,15 @@
 
 ## Overview
 
-TreFM is a Rust-based terminal file manager with a two-crate workspace architecture:
+TreFM is a Rust-based file manager with a multi-crate workspace architecture:
 
 ```
 trefm-core (library)  ←  UI-agnostic logic
 trefm-tui  (binary)   ←  Terminal frontend via ratatui
+trefm-web  (binary)   ←  Web remote terminal via Axum + SolidJS + xterm.js
 ```
 
-Core는 UI를 모른다. TUI든 GUI든 갈아끼울 수 있는 구조.
+Core는 UI를 모른다. TUI든 Web이든 GUI든 갈아끼울 수 있는 구조.
 
 ## Module Hierarchy
 
@@ -63,7 +64,39 @@ trefm-tui/src/
     ├── popup.rs        # Centered modal dialog
     ├── markdown.rs     # Markdown → ratatui Span rendering
     ├── command_palette.rs  # Command Palette popup (fuzzy-searchable action list)
-    └── remote_connect.rs   # Remote SSH/SFTP connection form
+    ├── remote_connect.rs   # Remote SSH/SFTP connection form
+    └── tab_bar.rs      # Tab bar widget for multi-tab navigation
+
+trefm-web/src/          # 순수 원격 터미널 서버 (trefm-core 의존성 없음)
+├── main.rs             # Axum server bootstrap (bind, routes, middleware)
+├── config.rs           # ServerConfig (TOML + env vars)
+├── state.rs            # AppState (shared config)
+├── error.rs            # AppError → HTTP status code mapping
+├── dto.rs              # LoginRequest/LoginResponse JSON DTOs
+├── static_files.rs     # rust-embed SPA serving
+├── auth/
+│   ├── mod.rs          # Auth module exports
+│   ├── jwt.rs          # JWT token generation/validation
+│   ├── password.rs     # Argon2 password hashing/verification
+│   └── middleware.rs   # JWT authentication middleware
+├── ws/
+│   ├── mod.rs          # WebSocket router
+│   └── terminal.rs     # PTY spawn + WebSocket relay (JSON+base64 protocol)
+└── api/
+    └── mod.rs          # Login endpoint only
+
+trefm-web/web/src/      # SolidJS frontend (로그인 + 전체화면 터미널)
+├── index.tsx           # Entry point
+├── App.tsx             # Root component (login → full-screen terminal)
+├── lib/
+│   ├── types.ts        # TypeScript type definitions (LoginResponse only)
+│   └── api.ts          # API client (login only)
+├── hooks/
+│   ├── useAuth.ts      # Authentication state hook
+│   └── useTerminal.ts  # xterm.js + WebSocket terminal hook
+└── components/
+    ├── LoginPage.tsx   # Login form
+    └── Terminal.tsx    # WebSocket PTY terminal component
 ```
 
 ## Design Patterns
@@ -120,6 +153,10 @@ AppMode::Normal ──'/'──> AppMode::Search(query)
                 ──'`'──> AppMode::Terminal
 ```
 
+Each panel slot maintains a `TabGroup` struct containing `Vec<TabEntry>` and `active_tab: usize`.
+Each `TabEntry` holds a panel, git statuses, branch info, and optional label.
+Tab bar only renders when 2+ tabs exist in the active panel slot.
+
 Each mode has its own key handler in `input.rs` and overlay renderer in `render.rs`.
 
 ## Data Flow
@@ -156,20 +193,21 @@ selected entry
 
 ### Action System
 
-모든 사용자 액션은 `Action` enum으로 통합 (31개 변형):
+모든 사용자 액션은 `Action` enum으로 통합 (44개 변형):
 
 ```
 Action enum (trefm-core)
 ├── Navigation:  CursorUp, CursorDown, CursorTop, CursorBottom,
 │                EnterDir, GoParent, GoHome, GoBack, GoForward, Refresh
 ├── FileOps:     Copy, Paste, Delete, Rename, Open, EditFile
-├── View:        ToggleHidden, Search, SortCycle, Pager
+├── View:        ToggleHidden, Search, SortCycle, Pager, PanelToggleDual,
+│                PanelFocusLeft, PanelFocusRight
 ├── Bookmark:    BookmarkAdd, BookmarkGo
 ├── Feature:     RecentFiles, DuplicateFiles
-├── System:      Help, Quit, CommandPalette
+├── System:      Help, Quit, CommandPalette, ToggleTerminal
 ├── Remote:      RemoteConnect, RemoteDisconnect
-├── Panel:       PanelToggleDual, PanelFocusLeft, PanelFocusRight
-└── Terminal:    ToggleTerminal
+└── Tab:         TabNew, TabClose, TabNext, TabPrev,
+                 TabSelect1~9 (9 direct selection actions)
 ```
 
 `ActionRegistry`는 각 `Action`의 메타데이터(이름, 설명, 카테고리)를 보유하며,
@@ -223,6 +261,23 @@ Modal modes (Search, Rename, Confirm, CommandPalette, etc.) bypass the keymap an
 | `image` | JPEG/PNG/WebP/GIF image decoding for preview |
 | `portable-pty` | PTY spawning, read/write, resize for embedded terminal |
 | `vt100` | VT100 escape sequence parsing for terminal emulator |
+
+### trefm-web (순수 원격 터미널 — trefm-core 의존성 없음)
+| Crate | Purpose |
+|-------|---------|
+| `axum` | Web framework (handlers, routing, extraction) |
+| `tower` + `tower-http` | Middleware stack, CORS, tracing |
+| `tokio` | Async runtime |
+| `serde` + `serde_json` | JSON serialization for login API |
+| `jsonwebtoken` | JWT token generation/validation |
+| `argon2` | Argon2id password hashing |
+| `rust-embed` | Embed SPA build into binary |
+| `mime_guess` | MIME type detection for Content-Type headers |
+| `uuid` + `rand` | Random session ID generation |
+| `portable-pty` | PTY spawning for WebSocket terminal |
+| `base64` | Base64 encoding for PTY I/O over WebSocket |
+| `futures` | Stream utilities for WebSocket handling |
+| `tracing-subscriber` | Log output formatting |
 
 ## Theme System
 

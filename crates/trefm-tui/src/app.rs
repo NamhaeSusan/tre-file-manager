@@ -348,17 +348,130 @@ fn save_bookmarks(bookmarks: &Bookmarks) {
     }
 }
 
+/// A single tab's state — panel + git info + display label.
+#[derive(Debug, Clone)]
+pub struct TabEntry {
+    pub panel: PanelState,
+    pub git_statuses: Option<HashMap<PathBuf, GitFileStatus>>,
+    pub branch_info: Option<BranchInfo>,
+    pub label: String,
+}
+
+/// A group of tabs within a single panel slot.
+#[derive(Debug, Clone)]
+pub struct TabGroup {
+    tabs: Vec<TabEntry>,
+    active_tab: usize,
+}
+
+impl TabGroup {
+    pub fn new(entry: TabEntry) -> Self {
+        Self {
+            tabs: vec![entry],
+            active_tab: 0,
+        }
+    }
+
+    pub fn active_tab(&self) -> &TabEntry {
+        &self.tabs[self.active_tab]
+    }
+
+    pub fn tab_count(&self) -> usize {
+        self.tabs.len()
+    }
+
+    pub fn active_tab_index(&self) -> usize {
+        self.active_tab
+    }
+
+    pub fn tabs(&self) -> &[TabEntry] {
+        &self.tabs
+    }
+
+    /// Add a new tab (max 9). Returns a new TabGroup with the new tab active.
+    pub fn with_new_tab(self, entry: TabEntry) -> Self {
+        if self.tabs.len() >= 9 {
+            return self;
+        }
+        let mut tabs = self.tabs;
+        let insert_idx = self.active_tab + 1;
+        tabs.insert(insert_idx, entry);
+        Self {
+            tabs,
+            active_tab: insert_idx,
+        }
+    }
+
+    /// Close a tab by index. If only 1 tab remains, returns self unchanged.
+    pub fn with_closed_tab(self, index: usize) -> Self {
+        if self.tabs.len() <= 1 || index >= self.tabs.len() {
+            return self;
+        }
+        let mut tabs = self.tabs;
+        tabs.remove(index);
+        let new_active = if self.active_tab >= tabs.len() {
+            tabs.len() - 1
+        } else if self.active_tab > index {
+            self.active_tab - 1
+        } else {
+            self.active_tab
+        };
+        Self {
+            tabs,
+            active_tab: new_active,
+        }
+    }
+
+    /// Switch to a specific tab by index.
+    pub fn with_active_tab(self, index: usize) -> Self {
+        if index >= self.tabs.len() {
+            return self;
+        }
+        Self {
+            active_tab: index,
+            ..self
+        }
+    }
+
+    /// Switch to the next tab (wrapping).
+    pub fn with_next_tab(self) -> Self {
+        let next = (self.active_tab + 1) % self.tabs.len();
+        Self {
+            active_tab: next,
+            ..self
+        }
+    }
+
+    /// Switch to the previous tab (wrapping).
+    pub fn with_prev_tab(self) -> Self {
+        let prev = if self.active_tab == 0 {
+            self.tabs.len() - 1
+        } else {
+            self.active_tab - 1
+        };
+        Self {
+            active_tab: prev,
+            ..self
+        }
+    }
+
+    /// Replace the active tab's entry.
+    pub fn with_updated_active(self, entry: TabEntry) -> Self {
+        let mut tabs = self.tabs;
+        tabs[self.active_tab] = entry;
+        Self { tabs, ..self }
+    }
+}
+
 /// Top-level application state. Immutable transitions via `with_*` methods.
 #[derive(Debug)]
 pub struct App {
     mode: AppMode,
-    panels: [PanelState; 2],
+    tab_groups: [TabGroup; 2],
     active_panel: usize,
     dual_mode: bool,
     should_quit: bool,
     status_message: Option<String>,
-    git_statuses: [Option<HashMap<PathBuf, GitFileStatus>>; 2],
-    branch_info: [Option<BranchInfo>; 2],
     /// Fuzzy search results — populated when in Search mode.
     search_results: Vec<FuzzyMatch>,
     /// Cursor index within the search results list.
@@ -415,8 +528,8 @@ impl App {
     pub fn new(start_dir: &Path) -> anyhow::Result<Self> {
         let panel = PanelState::from_dir(start_dir)?;
         let panel_right = panel.clone();
-        let git_statuses = load_git_statuses(panel.current_dir());
-        let branch_info = load_branch_info(panel.current_dir());
+        let git_statuses_init = load_git_statuses(panel.current_dir());
+        let branch_info_init = load_branch_info(panel.current_dir());
         let bookmarks = load_bookmarks();
 
         let cfg_dir = config_dir();
@@ -432,15 +545,32 @@ impl App {
             .map(|c| c.ui.show_icons)
             .unwrap_or(true);
 
+        let label = panel
+            .current_dir()
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/".to_string());
+
+        let tab_entry = TabEntry {
+            panel: panel.clone(),
+            git_statuses: git_statuses_init,
+            branch_info: branch_info_init,
+            label: label.clone(),
+        };
+        let tab_entry_right = TabEntry {
+            panel: panel_right,
+            git_statuses: None,
+            branch_info: None,
+            label,
+        };
+
         Ok(Self {
             mode: AppMode::Normal,
-            panels: [panel, panel_right],
+            tab_groups: [TabGroup::new(tab_entry), TabGroup::new(tab_entry_right)],
             active_panel: 0,
             dual_mode: false,
             should_quit: false,
             status_message: None,
-            git_statuses: [git_statuses, None],
-            branch_info: [branch_info, None],
             search_results: Vec::new(),
             search_selected: 0,
             bookmarks,
@@ -467,7 +597,7 @@ impl App {
 
     /// Returns the active panel.
     pub fn panel(&self) -> &PanelState {
-        &self.panels[self.active_panel]
+        &self.tab_groups[self.active_panel].active_tab().panel
     }
 
     pub fn should_quit(&self) -> bool {
@@ -479,11 +609,17 @@ impl App {
     }
 
     pub fn git_statuses(&self) -> Option<&HashMap<PathBuf, GitFileStatus>> {
-        self.git_statuses[self.active_panel].as_ref()
+        self.tab_groups[self.active_panel]
+            .active_tab()
+            .git_statuses
+            .as_ref()
     }
 
     pub fn branch_info(&self) -> Option<&BranchInfo> {
-        self.branch_info[self.active_panel].as_ref()
+        self.tab_groups[self.active_panel]
+            .active_tab()
+            .branch_info
+            .as_ref()
     }
 
     /// Whether dual panel mode is active.
@@ -497,27 +633,37 @@ impl App {
     }
 
     pub fn left_panel(&self) -> &PanelState {
-        &self.panels[0]
+        &self.tab_groups[0].active_tab().panel
     }
 
     pub fn right_panel(&self) -> &PanelState {
-        &self.panels[1]
+        &self.tab_groups[1].active_tab().panel
     }
 
     pub fn left_git_statuses(&self) -> Option<&HashMap<PathBuf, GitFileStatus>> {
-        self.git_statuses[0].as_ref()
+        self.tab_groups[0].active_tab().git_statuses.as_ref()
     }
 
     pub fn right_git_statuses(&self) -> Option<&HashMap<PathBuf, GitFileStatus>> {
-        self.git_statuses[1].as_ref()
+        self.tab_groups[1].active_tab().git_statuses.as_ref()
     }
 
     pub fn left_branch_info(&self) -> Option<&BranchInfo> {
-        self.branch_info[0].as_ref()
+        self.tab_groups[0].active_tab().branch_info.as_ref()
     }
 
     pub fn right_branch_info(&self) -> Option<&BranchInfo> {
-        self.branch_info[1].as_ref()
+        self.tab_groups[1].active_tab().branch_info.as_ref()
+    }
+
+    /// Returns the active tab group for the active panel.
+    pub fn active_tab_group(&self) -> &TabGroup {
+        &self.tab_groups[self.active_panel]
+    }
+
+    /// Returns the tab group for a specific panel index.
+    pub fn tab_group(&self, panel_idx: usize) -> &TabGroup {
+        &self.tab_groups[panel_idx]
     }
 
     pub fn search_results(&self) -> &[FuzzyMatch] {
@@ -598,7 +744,11 @@ impl App {
     /// Enter pager mode for the currently selected file.
     /// Returns self unchanged if the selection is a directory or binary.
     pub fn enter_pager(self) -> Self {
-        let entry = match self.panels[self.active_panel].selected_entry() {
+        let entry = match self.tab_groups[self.active_panel]
+            .active_tab()
+            .panel
+            .selected_entry()
+        {
             Some(e) if !e.is_dir() => e.clone(),
             _ => return self.with_status("Cannot preview directory".to_string()),
         };
@@ -644,37 +794,54 @@ impl App {
     pub fn with_panel(self, panel: PanelState) -> Self {
         let idx = self.active_panel;
         let is_remote = self.is_remote();
-        let mut panels = self.panels;
-        panels[idx] = panel;
-        let mut git_statuses = self.git_statuses;
-        let mut branch_info = self.branch_info;
-        if is_remote {
-            git_statuses[idx] = None;
-            branch_info[idx] = None;
+        let (git_statuses, branch_info) = if is_remote {
+            (None, None)
         } else {
-            git_statuses[idx] = load_git_statuses(panels[idx].current_dir());
-            branch_info[idx] = load_branch_info(panels[idx].current_dir());
-        }
-        Self {
-            panels,
+            (
+                load_git_statuses(panel.current_dir()),
+                load_branch_info(panel.current_dir()),
+            )
+        };
+        let label = panel
+            .current_dir()
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/".to_string());
+        let entry = TabEntry {
+            panel,
             git_statuses,
             branch_info,
-            ..self
-        }
+            label,
+        };
+        let mut tab_groups = self.tab_groups;
+        tab_groups[idx] = tab_groups[idx].clone().with_updated_active(entry);
+        Self { tab_groups, ..self }
     }
 
     /// Toggle dual panel mode.
     pub fn with_toggle_dual_mode(self) -> Self {
         let entering_dual = !self.dual_mode;
         if entering_dual {
-            let mut git_statuses = self.git_statuses;
-            let mut branch_info = self.branch_info;
-            git_statuses[1] = load_git_statuses(self.panels[1].current_dir());
-            branch_info[1] = load_branch_info(self.panels[1].current_dir());
-            Self {
-                dual_mode: true,
+            let right_tab = self.tab_groups[1].active_tab();
+            let git_statuses = load_git_statuses(right_tab.panel.current_dir());
+            let branch_info = load_branch_info(right_tab.panel.current_dir());
+            let label = right_tab
+                .panel
+                .current_dir()
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| "/".to_string());
+            let entry = TabEntry {
+                panel: right_tab.panel.clone(),
                 git_statuses,
                 branch_info,
+                label,
+            };
+            let mut tab_groups = self.tab_groups;
+            tab_groups[1] = tab_groups[1].clone().with_updated_active(entry);
+            Self {
+                dual_mode: true,
+                tab_groups,
                 ..self
             }
         } else {
@@ -741,6 +908,70 @@ impl App {
         }
     }
 
+    /// Open a new tab duplicating the current directory.
+    pub fn with_new_tab(self) -> Self {
+        let idx = self.active_panel;
+        let current = self.tab_groups[idx].active_tab();
+        if self.tab_groups[idx].tab_count() >= 9 {
+            return self.with_status("Maximum 9 tabs reached".to_string());
+        }
+        let new_entry = TabEntry {
+            panel: current.panel.clone(),
+            git_statuses: current.git_statuses.clone(),
+            branch_info: current.branch_info.clone(),
+            label: current.label.clone(),
+        };
+        let mut tab_groups = self.tab_groups;
+        tab_groups[idx] = tab_groups[idx].clone().with_new_tab(new_entry);
+        let tab_num = tab_groups[idx].active_tab_index() + 1;
+        Self { tab_groups, ..self }.with_status(format!("Tab {} opened", tab_num))
+    }
+
+    /// Close the current tab.
+    pub fn with_close_tab(self) -> Self {
+        let idx = self.active_panel;
+        if self.tab_groups[idx].tab_count() <= 1 {
+            return self.with_status("Cannot close last tab".to_string());
+        }
+        let active_idx = self.tab_groups[idx].active_tab_index();
+        let mut tab_groups = self.tab_groups;
+        tab_groups[idx] = tab_groups[idx].clone().with_closed_tab(active_idx);
+        Self { tab_groups, ..self }
+    }
+
+    /// Switch to the next tab.
+    pub fn with_next_tab(self) -> Self {
+        let idx = self.active_panel;
+        if self.tab_groups[idx].tab_count() <= 1 {
+            return self;
+        }
+        let mut tab_groups = self.tab_groups;
+        tab_groups[idx] = tab_groups[idx].clone().with_next_tab();
+        Self { tab_groups, ..self }
+    }
+
+    /// Switch to the previous tab.
+    pub fn with_prev_tab(self) -> Self {
+        let idx = self.active_panel;
+        if self.tab_groups[idx].tab_count() <= 1 {
+            return self;
+        }
+        let mut tab_groups = self.tab_groups;
+        tab_groups[idx] = tab_groups[idx].clone().with_prev_tab();
+        Self { tab_groups, ..self }
+    }
+
+    /// Switch to a specific tab by index (0-based).
+    pub fn with_select_tab(self, index: usize) -> Self {
+        let idx = self.active_panel;
+        if index >= self.tab_groups[idx].tab_count() {
+            return self;
+        }
+        let mut tab_groups = self.tab_groups;
+        tab_groups[idx] = tab_groups[idx].clone().with_active_tab(index);
+        Self { tab_groups, ..self }
+    }
+
     /// Update the connection form state (immutable transition).
     pub fn with_connect_form(self, form: ConnectFormState) -> Self {
         Self {
@@ -754,36 +985,39 @@ impl App {
     /// Sorts and filters entries, disables git statuses.
     pub fn with_remote_directory(self, path: PathBuf, entries: Vec<FileEntry>) -> Self {
         let idx = self.active_panel;
+        let current_tab = self.tab_groups[idx].active_tab();
         let sorted = sort_entries(
             &entries,
-            self.panels[idx].sort_field(),
-            self.panels[idx].sort_direction(),
+            current_tab.panel.sort_field(),
+            current_tab.panel.sort_direction(),
             true,
         );
-        let visible = filter_hidden(&sorted, self.panels[idx].show_hidden());
-        let inner = self.panels[idx].inner.clone().with_directory(path, visible);
+        let visible = filter_hidden(&sorted, current_tab.panel.show_hidden());
+        let inner = current_tab
+            .panel
+            .inner
+            .clone()
+            .with_directory(path, visible);
         let panel = PanelState {
             inner,
-            show_hidden: self.panels[idx].show_hidden,
-            sort_field: self.panels[idx].sort_field,
-            sort_direction: self.panels[idx].sort_direction,
+            show_hidden: current_tab.panel.show_hidden,
+            sort_field: current_tab.panel.sort_field,
+            sort_direction: current_tab.panel.sort_direction,
         };
-        let mut panels = self.panels;
-        panels[idx] = panel;
-        Self {
-            panels,
-            git_statuses: {
-                let mut gs = self.git_statuses;
-                gs[idx] = None;
-                gs
-            },
-            branch_info: {
-                let mut bi = self.branch_info;
-                bi[idx] = None;
-                bi
-            },
-            ..self
-        }
+        let label = panel
+            .current_dir()
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/".to_string());
+        let entry = TabEntry {
+            panel,
+            git_statuses: None,
+            branch_info: None,
+            label,
+        };
+        let mut tab_groups = self.tab_groups;
+        tab_groups[idx] = tab_groups[idx].clone().with_updated_active(entry);
+        Self { tab_groups, ..self }
     }
 
     /// Handle a core Command by producing a new App state.

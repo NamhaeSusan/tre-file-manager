@@ -5,10 +5,10 @@
 Rust로 작성된 빠르고 vim 스타일의 터미널 파일 매니저.
 
 TreFM은 **코어 + 프론트엔드** 아키텍처를 기반으로 설계되었습니다. UI에 독립적인
-`trefm-core` 라이브러리가 파일 시스템 작업, 탐색, 설정을 처리하고,
-`trefm-tui`가 [ratatui](https://ratatui.rs)를 사용하여 터미널 인터페이스를
-제공합니다. 추후 GUI 프론트엔드(Tauri/Swift)에서도 동일한 코어를 수정 없이
-재사용할 수 있습니다.
+`trefm-core` 라이브러리가 파일 시스템 작업, 탐색, 설정을 처리합니다. 여러 프론트엔드가 동일한 코어를 사용:
+- `trefm-tui`: [ratatui](https://ratatui.rs) 기반 터미널 인터페이스
+- `trefm-web`: 브라우저에서 액세스 가능한 웹 원격 터미널 (Axum + SolidJS + xterm.js) — 전체화면 터미널
+- 추후 GUI 프론트엔드(Tauri/Swift)에서도 동일한 코어를 수정 없이 재사용 가능
 
 ## 주요 기능
 
@@ -62,11 +62,35 @@ TreFM은 **코어 + 프론트엔드** 아키텍처를 기반으로 설계되었�
 - 터미널 모드에서는 모든 키 입력이 PTY로 전달 (`Esc`로 파일 매니저 복귀)
 - 셸, 높이, CWD 동기화 등 `[terminal]` 설정 섹션으로 커스터마이즈 가능
 
+### 탭
+- **브라우저 스타일 탭** — 여러 디렉토리를 탭으로 열어 빠르게 전환
+- 듀얼 패널 모드에서 각 패널 슬롯이 독립적인 탭 그룹 보유
+- 2개 이상 탭이 있을 때만 탭 바 표시 (단일 탭 시 UI 변화 없음)
+- 패널당 최대 9개 탭
+- 순환 네비게이션 (마지막 탭에서 다음 → 첫 탭으로)
+
+### 원격 서버 (SSH/SFTP)
+- **SSH/SFTP 파일 탐색** — 원격 서버에 연결하여 동일한 UI로 파일 탐색
+- 비밀번호 인증 (키 파일 인증은 Phase 2)
+- 읽기 전용 (탐색, 검색/정렬만)
+- 연결 폼 팝업 (Host/Port/Username/Password)
+- 상태바에 `[SSH: user@host]` 표시
+- **TOFU 호스트 키 검증** — 첫 연결 시 SSH 호스트 키를 `~/.config/trefm/known_hosts`에 저장 및 이후 검증
+
+### 웹 원격 터미널
+- **전체화면 원격 터미널** — 브라우저에서 터미널 액세스
+- JWT 비밀번호 인증 + 다중 인증 지원 (WebAuthn + Discord OTP)
+- 로그인 후 바로 전체화면 터미널 (파일 매니저 필요 시 터미널에서 TUI 실행)
+- WebSocket PTY 터미널 (xterm.js + FitAddon + WebLinksAddon, JSON+base64 WebSocket 프로토콜, 1회용 티켓 인증, 자동 리사이즈)
+- rust-embed 단일 바이너리 배포 (SPA 바이너리 임베드)
+- trefm-core 의존성 없음 (독립 터미널 서버)
+- **보안**: 제한적 CORS, 내부 에러 마스킹, 리사이즈 검증, 상수 시간 OTP 비교
+
 ### 커스터마이즈
 - **커스텀 키 바인딩** — `keymap.toml`로 원하는 키에 원하는 액션 매핑
 - **테마 시스템** — `theme.toml`로 모든 색상 커스터마이즈 (이름 색상 + hex `#rrggbb`)
 - **Nerd Font 아이콘** — 30+ 파일 타입 아이콘 (`show_icons` 설정으로 토글)
-- **타입 안전 액션 시스템** — 31개 모든 액션이 `Action` enum으로 통합, 메타데이터 포함
+- **타입 안전 액션 시스템** — 44개 모든 액션이 `Action` enum으로 통합, 메타데이터 포함
 - 모든 설정은 사람이 읽을 수 있는 TOML 파일
 
 ### 실시간
@@ -87,6 +111,7 @@ cargo build --release
 
 ### 바로 실행
 
+터미널 UI:
 ```bash
 cargo run -p trefm-tui
 ```
@@ -95,6 +120,52 @@ cargo run -p trefm-tui
 
 ```bash
 cargo run -p trefm-tui -- /path/to/directory
+```
+
+웹 인터페이스:
+```bash
+# 먼저 프론트엔드 빌드
+cd crates/trefm-web/web
+npm install && npm run build
+cd ../../..
+
+# 서버 실행 (기본: http://localhost:9090)
+cargo run -p trefm-web
+```
+
+그런 다음 브라우저에서 `http://localhost:9090`을 여세요.
+
+#### 웹 설정
+
+모든 설정은 환경변수로 지정합니다:
+
+| 환경변수 | 기본값 | 설명 |
+|----------|--------|------|
+| `TREFM_BIND_ADDR` | `0.0.0.0:9090` | 서버 바인드 주소 (인증 미설정 시 자동으로 `127.0.0.1`로 강제) |
+| `TREFM_ROOT` | `$HOME` | 터미널 시작 작업 디렉토리 |
+| `TREFM_PASSWORD_HASH` | *(비어있음)* | Argon2 비밀번호 해시. 비어있으면 인증 건너뜀 (개발 모드) |
+| `TREFM_JWT_SECRET` | *(랜덤)* | JWT 서명 시크릿. 미설정 시 자동 생성. 약한 시크릿은 거부됨 |
+| `TREFM_WEB_CONFIG` | *(없음)* | TOML 설정 파일 경로 (선택사항) |
+| `TREFM_INSECURE` | *(미설정)* | `1`로 설정하면 인증 없이 외부 바인딩 허용 (비권장) |
+
+인증을 사용하는 예시:
+```bash
+# 비밀번호 해시 생성 (Python argon2-cffi 필요)
+HASH=$(python3 -c "from argon2 import PasswordHasher; print(PasswordHasher().hash('mypassword'))")
+
+# 인증 활성화하여 실행
+TREFM_PASSWORD_HASH="$HASH" TREFM_JWT_SECRET="my-secret-key" cargo run -p trefm-web
+```
+
+#### 개발 모드 (HMR)
+
+```bash
+# 터미널 1: 백엔드
+cargo run -p trefm-web
+
+# 터미널 2: 핫 리로드 프론트엔드 (/api → localhost:9090 프록시)
+cd crates/trefm-web/web && npm run dev
+# → http://localhost:3000 에서 접속
 ```
 
 ## 키 바인딩
@@ -124,6 +195,11 @@ cargo run -p trefm-tui -- /path/to/directory
 | `C` | 원격 서버 연결/해제 (SSH/SFTP) |
 | `` ` `` | 내장 터미널 토글 |
 | `Ctrl+`` ` | 터미널 포커스 토글 |
+| `t` | 새 탭 (현재 디렉토리 복제) |
+| `w` | 현재 탭 닫기 (마지막 탭은 닫을 수 없음) |
+| `]` | 다음 탭 |
+| `[` | 이전 탭 |
+| `Alt+1`~`Alt+9` | 탭 직접 선택 |
 | `?` | 도움말 |
 | `q` | 종료 |
 | `Ctrl+C` | 종료 |
@@ -137,10 +213,12 @@ tre-file-manager/
   crates/
     trefm-core/    # UI 무관 핵심 로직 (fs, nav, config, git, events)
     trefm-tui/     # 터미널 UI 프론트엔드 (ratatui + crossterm + syntect)
+    trefm-web/     # 웹 원격 터미널 (Axum + SolidJS + xterm.js)
   config/
     default.toml   # 기본 설정
     keymap.toml    # 기본 키 바인딩
     theme.toml     # 기본 테마 색상
+    web.toml       # 웹 서버 설정
 ```
 
 ## 설정
@@ -210,7 +288,7 @@ l = "enter_dir"
 q = "quit"
 ```
 
-사용 가능한 액션 ID: `cursor_down`, `cursor_up`, `go_parent`, `go_home`, `enter_dir`, `go_first`, `go_last`, `open`, `yank`, `delete`, `rename`, `edit_file`, `pager`, `toggle_hidden`, `search`, `sort_cycle`, `bookmark_add`, `bookmark_go`, `recent_files`, `duplicate_files`, `command_palette`, `remote_connect`, `remote_disconnect`, `panel_toggle_dual`, `panel_focus_left`, `panel_focus_right`, `toggle_terminal`, `help`, `quit`
+사용 가능한 액션 ID: `cursor_down`, `cursor_up`, `go_parent`, `go_home`, `enter_dir`, `go_first`, `go_last`, `go_back`, `go_forward`, `refresh`, `open`, `yank`, `paste`, `delete`, `rename`, `edit_file`, `pager`, `toggle_hidden`, `search`, `sort_cycle`, `bookmark_add`, `bookmark_go`, `recent_files`, `duplicate_files`, `command_palette`, `remote_connect`, `remote_disconnect`, `panel_toggle_dual`, `panel_focus_left`, `panel_focus_right`, `toggle_terminal`, `tab_new`, `tab_close`, `tab_next`, `tab_prev`, `tab_select_1`, `tab_select_2`, `tab_select_3`, `tab_select_4`, `tab_select_5`, `tab_select_6`, `tab_select_7`, `tab_select_8`, `tab_select_9`, `help`, `quit`
 
 ## 의존성
 
@@ -247,6 +325,26 @@ q = "quit"
 |----------|------|
 | `russh` + `russh-sftp` | SSH/SFTP 원격 서버 파일 탐색 |
 | `async-trait` | 비동기 트레이트 지원 |
+
+### 웹 서버 (trefm-web)
+| 크레이트 | 용도 |
+|----------|------|
+| `axum` + `tower` + `tower-http` | 웹 프레임워크, 미들웨어, CORS |
+| `jsonwebtoken` | JWT 토큰 생성/검증 |
+| `argon2` | 비밀번호 해싱 (Argon2id) |
+| `rust-embed` | SPA 빌드를 바이너리에 임베드 |
+| `mime_guess` | HTTP 응답용 MIME 타입 감지 |
+| `uuid` + `rand` | 랜덤 ID 생성 |
+| `portable-pty` | WebSocket 터미널용 PTY 스폰 |
+| `base64` | WebSocket PTY I/O용 Base64 인코딩 |
+| `futures` | WebSocket 스트림 유틸리티 |
+
+### 웹 프론트엔드 (trefm-web/web)
+| 패키지 | 용도 |
+|--------|------|
+| `@xterm/xterm` | 브라우저 터미널 에뮬레이터 |
+| `@xterm/addon-fit` | 터미널 컨테이너 크기 자동 맞춤 |
+| `@xterm/addon-web-links` | 터미널 출력에서 클릭 가능한 링크 |
 
 ## 라이선스
 

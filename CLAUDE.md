@@ -56,7 +56,8 @@ trefm/
 │   │   │   │   ├── breadcrumb.rs# 경로 표시
 │   │   │   │   ├── popup.rs     # 모달/다이얼로그
 │   │   │   │   ├── command_palette.rs # 커맨드 팔레트 UI
-│   │   │   │   └── remote_connect.rs # 원격 연결 폼 UI
+│   │   │   │   ├── remote_connect.rs # 원격 연결 폼 UI
+│   │   │   │   └── tab_bar.rs   # 탭 바 위젯
 │   │   │   ├── input.rs         # 키 입력 처리
 │   │   │   ├── render.rs        # 렌더링 로직
 │   │   │   ├── image_preview.rs # 이미지 미리보기 캐싱 및 프로토콜 상태
@@ -67,6 +68,41 @@ trefm/
 │   │   │       └── widget.rs    # ratatui 터미널 렌더링
 │   │   └── Cargo.toml
 │   │
+│   ├── trefm-web/           # 🌐 웹 원격 터미널
+│   │   ├── src/
+│   │   │   ├── main.rs          # Axum 서버 부트스트랩
+│   │   │   ├── config.rs        # ServerConfig (TOML + env vars)
+│   │   │   ├── state.rs         # AppState (공유 상태)
+│   │   │   ├── error.rs         # AppError → HTTP 상태 코드 매핑
+│   │   │   ├── dto.rs           # LoginRequest/LoginResponse JSON 타입
+│   │   │   ├── static_files.rs  # rust-embed SPA 서빙
+│   │   │   ├── auth/
+│   │   │   │   ├── mod.rs       # Auth 모듈 exports
+│   │   │   │   ├── jwt.rs       # JWT 토큰 생성/검증
+│   │   │   │   ├── password.rs  # Argon2 비밀번호 해싱
+│   │   │   │   └── middleware.rs# JWT 미들웨어
+│   │   │   ├── ws/
+│   │   │   │   ├── mod.rs       # WebSocket 라우터
+│   │   │   │   └── terminal.rs  # PTY 스폰 + WebSocket 릴레이
+│   │   │   └── api/
+│   │   │       └── mod.rs       # 로그인 엔드포인트만
+│   │   ├── web/
+│   │   │   ├── src/
+│   │   │   │   ├── index.tsx    # SolidJS 엔트리 포인트
+│   │   │   │   ├── App.tsx      # 루트 컴포넌트 (로그인 + 전체화면 터미널)
+│   │   │   │   ├── lib/
+│   │   │   │   │   ├── types.ts # TypeScript 타입 정의 (LoginResponse만)
+│   │   │   │   │   └── api.ts   # API 클라이언트 (로그인만)
+│   │   │   │   ├── hooks/
+│   │   │   │   │   ├── useAuth.ts        # 인증 상태 훅
+│   │   │   │   │   └── useTerminal.ts    # xterm.js + WebSocket 터미널 훅
+│   │   │   │   └── components/
+│   │   │   │       ├── LoginPage.tsx     # 로그인 폼
+│   │   │   │       └── Terminal.tsx      # 웹 터미널 컴포넌트
+│   │   │   ├── package.json
+│   │   │   └── vite.config.ts
+│   │   └── Cargo.toml
+│   │
 │   └── trefm-gui/           # 🪟 (미래) Tauri/GUI 프론트엔드
 │       └── ...
 │
@@ -75,6 +111,16 @@ trefm/
 │   └── keymap.toml          # 기본 키맵
 └── README.md
 ```
+
+### 작업 기록 (CRITICAL)
+
+모든 작업이 끝나면 `claude_history/` 폴더에 기록을 남긴다.
+
+- **파일명**: `yyyy-mm-dd-{{work}}.md` (예: `2026-02-10-security-audit.md`)
+- **내용**: 작업 요약, 변경된 파일, 검증 결과를 간단하게 기록
+- 같은 날 여러 작업 시 work 부분으로 구분 (예: `2026-02-10-tab-system.md`)
+
+---
 
 ### 기능 구현 후 필수 체크리스트 (CRITICAL — 절대 빠뜨리지 말 것)
 
@@ -129,6 +175,9 @@ Phase 3: doc-updator → 문서 반영
 | 영역 | 라이브러리 | 용도 |
 |------|-----------|------|
 | TUI 프레임워크 | `ratatui` + `crossterm` | 터미널 UI |
+| 웹 프레임워크 | `axum` + `tower` + `tower-http` | 웹 서버 + 인증 API |
+| 웹 프론트엔드 | `SolidJS` + `Vite` + `TailwindCSS` | 로그인 + 터미널 UI |
+| 인증 | `jsonwebtoken` + `argon2` | JWT 토큰 + 비밀번호 해싱 |
 | 비동기 런타임 | `tokio` | 파일 워칭, 비동기 IO |
 | Git 연동 | `git2` (libgit2 바인딩) | git status, branch, log |
 | 파일 감시 | `notify` | 실시간 파일 변경 감지 |
@@ -143,6 +192,9 @@ Phase 3: doc-updator → 문서 반영
 | 비동기 유틸 | `async-trait` | 비동기 트레이트 지원 |
 | PTY 관리 | `portable-pty` | 의사 터미널 스폰/읽기/쓰기 |
 | 터미널 파싱 | `vt100` | VT100 이스케이프 시퀀스 파싱 |
+| 정적 파일 임베딩 | `rust-embed` | SPA 빌드를 바이너리에 임베드 |
+| MIME 타입 감지 | `mime_guess` | HTTP 응답용 Content-Type |
+| 웹 터미널 | `@xterm/xterm` + `@xterm/addon-fit` + `@xterm/addon-web-links` | 브라우저 터미널 에뮬레이션 (xterm.js) |
 
 ---
 
@@ -186,6 +238,23 @@ Phase 3: doc-updator → 문서 반영
 - 터미널 모드에서는 모든 키 입력이 PTY로 전달 (Esc로 파일 매니저 복귀)
 - 셸, 높이 비율 등 설정 가능 (`[terminal]` 섹션)
 
+### 🗂️ 탭 시스템
+- 브라우저 스타일 탭: 여러 디렉토리를 탭으로 열어 빠르게 전환
+- 듀얼 패널 모드에서 각 패널 슬롯이 독립적인 탭 그룹 보유
+- 2개 이상 탭이 있을 때만 탭 바 표시 (단일 탭 시 UI 변화 없음)
+- 패널당 최대 9개 탭
+- 순환 네비게이션 (마지막 탭에서 다음 → 첫 탭으로)
+
+### 🌐 웹 원격 터미널 (trefm-web)
+- 브라우저에서 전체화면 원격 터미널 액세스
+- JWT 비밀번호 인증 시스템
+- 로그인 후 바로 전체화면 터미널 (파일 매니저 필요 시 터미널에서 TUI 실행)
+- WebSocket PTY 터미널 (xterm.js + JSON/base64 프로토콜)
+- JWT 쿼리 파라미터 인증으로 WebSocket 보안
+- xterm.js FitAddon + WebLinksAddon 지원, 컨테이너 리사이즈 자동 대응
+- rust-embed 단일 바이너리 배포 (SPA 임베드)
+- trefm-core 의존성 없음 (독립 실행)
+
 ### ⌨️ 키맵 (기본 — 전부 커스터마이즈 가능)
 
 | 키 | 동작 |
@@ -217,6 +286,11 @@ Phase 3: doc-updator → 문서 반영
 | `C` | 원격 서버 연결/해제 |
 | `` ` `` | 내장 터미널 토글 |
 | `Ctrl+`` ` | 터미널 포커스 토글 |
+| `t` | 새 탭 (현재 디렉토리 복제) |
+| `w` | 현재 탭 닫기 (마지막 탭은 닫을 수 없음) |
+| `]` | 다음 탭 |
+| `[` | 이전 탭 |
+| `Alt+1`~`Alt+9` | 탭 직접 선택 |
 
 ---
 
@@ -260,12 +334,22 @@ Phase 3: doc-updator → 문서 반영
 - [x] Command Palette (`:` 키, fuzzy 검색으로 모든 액션 실행)
 - [x] Keymap → Action 기반 리팩터 (string → Action enum)
 
-### Phase 5 — 듀얼 패널 + 확장 (미래)
+### Phase 5 — 듀얼 패널 + 확장
 - [x] 원격 서버 SSH/SFTP 탐색 (읽기 전용 MVP)
 - [x] DualPanel 구현 (Tab 전환)
 - [x] 내장 터미널 에뮬레이터 (PTY + vt100 + ratatui 렌더링)
+- [x] 탭 시스템 (브라우저 스타일, 패널별 독립 탭 그룹)
 - [ ] 패널 간 복사/이동
 - [ ] 플러그인 시스템 구상
+
+### Phase W1 — 웹 원격 터미널 (완료)
+- [x] Axum 웹 서버 + JWT 인증
+- [x] rust-embed SPA 임베드 (단일 바이너리)
+- [x] WebSocket PTY 터미널 (xterm.js + JSON/base64 프로토콜)
+- [x] 전체화면 터미널 UI (로그인 → 바로 터미널)
+- [x] trefm-core 의존성 제거 (순수 터미널 서버)
+
+### Phase W2 — 웹 확장 (미래)
 - [ ] Tauri GUI 프론트엔드
 
 ---

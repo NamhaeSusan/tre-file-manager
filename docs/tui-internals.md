@@ -179,6 +179,19 @@ pub fn handle_key(key, mode, state, keymap) -> (InputAction, InputState)
 | `Action::PanelFocusLeft` | `PanelFocus(0)` |
 | `Action::PanelFocusRight` | `PanelFocus(1)` |
 | `Action::ToggleTerminal` | `TerminalToggle` |
+| `Action::TabNew` | `TabNew` |
+| `Action::TabClose` | `TabClose` |
+| `Action::TabNext` | `TabNext` |
+| `Action::TabPrev` | `TabPrev` |
+| `Action::TabSelect1` | `TabSelect(0)` |
+| `Action::TabSelect2` | `TabSelect(1)` |
+| `Action::TabSelect3` | `TabSelect(2)` |
+| `Action::TabSelect4` | `TabSelect(3)` |
+| `Action::TabSelect5` | `TabSelect(4)` |
+| `Action::TabSelect6` | `TabSelect(5)` |
+| `Action::TabSelect7` | `TabSelect(6)` |
+| `Action::TabSelect8` | `TabSelect(7)` |
+| `Action::TabSelect9` | `TabSelect(8)` |
 
 Arrow keys, `Ctrl+C`, `Enter`, and `gg` sequence remain hardcoded.
 Modal modes (Search, Rename, Confirm, CommandPalette, etc.) bypass the keymap entirely.
@@ -228,6 +241,11 @@ Modal modes (Search, Rename, Confirm, CommandPalette, etc.) bypass the keymap en
 | `TerminalToggle` | 터미널 패널 토글 |
 | `TerminalFocus` | 터미널로 포커스 전환 |
 | `TerminalUnfocus` | 터미널에서 파일 매니저로 포커스 복귀 |
+| `TabNew` | 새 탭 생성 (현재 디렉토리 복제) |
+| `TabClose` | 현재 탭 닫기 |
+| `TabNext` | 다음 탭으로 전환 |
+| `TabPrev` | 이전 탭으로 전환 |
+| `TabSelect(usize)` | 인덱스로 탭 직접 선택 |
 | `None` | 무시 |
 
 ### InputState

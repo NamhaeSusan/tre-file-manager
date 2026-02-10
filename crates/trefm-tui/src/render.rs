@@ -147,19 +147,38 @@ fn render_single_panel_layout(
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(content_area);
 
-    // Left column: breadcrumb (1 line) | file list (fill)
+    // Left column: [tab_bar?] breadcrumb (1 line) | file list (fill)
+    let tab_group = app.active_tab_group();
+    let tab_count = tab_group.tab_count();
+    let header_height = if tab_count > 1 { 2 } else { 1 };
+
     let left_vertical = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)])
+        .constraints([Constraint::Length(header_height), Constraint::Min(0)])
         .split(horizontal[0]);
 
-    render_breadcrumb(
-        f,
-        left_vertical[0],
-        panel.current_dir(),
-        app.branch_info(),
-        theme,
-    );
+    if tab_count > 1 {
+        let header_split = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(1), Constraint::Length(1)])
+            .split(left_vertical[0]);
+        crate::ui::tab_bar::render_tab_bar(f, header_split[0], tab_group, theme);
+        render_breadcrumb(
+            f,
+            header_split[1],
+            panel.current_dir(),
+            app.branch_info(),
+            theme,
+        );
+    } else {
+        render_breadcrumb(
+            f,
+            left_vertical[0],
+            panel.current_dir(),
+            app.branch_info(),
+            theme,
+        );
+    }
 
     render_file_list(
         f,
@@ -256,6 +275,7 @@ fn render_dual_panel_layout(
         app.left_panel(),
         app.left_git_statuses(),
         app.left_branch_info(),
+        app.tab_group(0),
         theme,
         show_icons,
         is_left_active,
@@ -268,6 +288,7 @@ fn render_dual_panel_layout(
         app.right_panel(),
         app.right_git_statuses(),
         app.right_branch_info(),
+        app.tab_group(1),
         theme,
         show_icons,
         !is_left_active,
@@ -308,16 +329,30 @@ fn render_panel_column(
         &std::collections::HashMap<std::path::PathBuf, trefm_core::git::status::GitFileStatus>,
     >,
     branch_info: Option<&trefm_core::git::branch::BranchInfo>,
+    tab_group: &crate::app::TabGroup,
     theme: &trefm_core::config::theme::Theme,
     show_icons: bool,
     is_active: bool,
 ) {
+    let tab_count = tab_group.tab_count();
+    let header_height = if tab_count > 1 { 2 } else { 1 };
+
     let vertical = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(0)])
+        .constraints([Constraint::Length(header_height), Constraint::Min(0)])
         .split(area);
 
-    render_breadcrumb(f, vertical[0], panel.current_dir(), branch_info, theme);
+    if tab_count > 1 {
+        let header_split = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(1), Constraint::Length(1)])
+            .split(vertical[0]);
+        crate::ui::tab_bar::render_tab_bar(f, header_split[0], tab_group, theme);
+        render_breadcrumb(f, header_split[1], panel.current_dir(), branch_info, theme);
+    } else {
+        render_breadcrumb(f, vertical[0], panel.current_dir(), branch_info, theme);
+    }
+
     render_file_list(
         f,
         vertical[1],
@@ -354,6 +389,10 @@ fn render_help_popup(f: &mut Frame, theme: &trefm_core::config::theme::Theme) {
         "Ctrl+t   - Toggle terminal".to_owned(),
         "Tab      - Toggle dual panel mode".to_owned(),
         "1/2      - Focus left/right panel (dual)".to_owned(),
+        "t        - New tab".to_owned(),
+        "w        - Close tab".to_owned(),
+        "]/[      - Next/previous tab".to_owned(),
+        "Alt+1~9  - Select tab directly".to_owned(),
         "q        - Quit".to_owned(),
         "?        - This help".to_owned(),
         "".to_owned(),

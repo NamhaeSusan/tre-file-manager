@@ -85,6 +85,12 @@ impl Default for Keymap {
         bindings.insert("1".to_string(), Action::PanelFocusLeft);
         bindings.insert("2".to_string(), Action::PanelFocusRight);
 
+        // Tabs
+        bindings.insert("t".to_string(), Action::TabNew);
+        bindings.insert("w".to_string(), Action::TabClose);
+        bindings.insert("]".to_string(), Action::TabNext);
+        bindings.insert("[".to_string(), Action::TabPrev);
+
         let reverse = build_reverse(&bindings);
         Self { bindings, reverse }
     }

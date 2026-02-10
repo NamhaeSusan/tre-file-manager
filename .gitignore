@@ -19,3 +19,6 @@ Thumbs.db
 
 # Debug
 *.log
+
+# Config (contains secrets)
+config/trefm-web.toml

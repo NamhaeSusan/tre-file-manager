@@ -1,0 +1,20 @@
+bind_addr = "0.0.0.0:9090"
+
+[auth]
+jwt_secret = "change-me-to-a-random-secret"
+jwt_ttl_hours = 24
+# discord_webhook_url = "https://discord.com/api/webhooks/..."
+otp_ttl_seconds = 300
+
+[filesystem]
+root = "/home/youruser"
+
+# [[users]]
+# username = "user1"
+# password_hash = "$argon2id$..."
+# root = "/home/user1"
+
+# [[users]]
+# username = "user2"
+# password_hash = "$argon2id$..."
+# root = "/home/user2"

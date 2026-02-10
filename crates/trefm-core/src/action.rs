@@ -56,6 +56,20 @@ pub enum Action {
     PanelToggleDual,
     PanelFocusLeft,
     PanelFocusRight,
+    // Tab
+    TabNew,
+    TabClose,
+    TabNext,
+    TabPrev,
+    TabSelect1,
+    TabSelect2,
+    TabSelect3,
+    TabSelect4,
+    TabSelect5,
+    TabSelect6,
+    TabSelect7,
+    TabSelect8,
+    TabSelect9,
 }
 
 /// Broad category for grouping actions in the palette.
@@ -68,6 +82,7 @@ pub enum ActionCategory {
     Feature,
     System,
     Remote,
+    Tab,
 }
 
 impl ActionCategory {
@@ -81,6 +96,7 @@ impl ActionCategory {
             Self::Feature => "Feature",
             Self::System => "System",
             Self::Remote => "Remote",
+            Self::Tab => "Tab",
         }
     }
 }
@@ -350,6 +366,98 @@ impl ActionRegistry {
                 description: "Switch focus to right panel",
                 category: ActionCategory::Navigation,
             },
+            // Tab
+            ActionDescriptor {
+                action: Action::TabNew,
+                id: "tab_new",
+                name: "New Tab",
+                description: "Open a new tab",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabClose,
+                id: "tab_close",
+                name: "Close Tab",
+                description: "Close current tab",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabNext,
+                id: "tab_next",
+                name: "Next Tab",
+                description: "Switch to next tab",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabPrev,
+                id: "tab_prev",
+                name: "Previous Tab",
+                description: "Switch to previous tab",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect1,
+                id: "tab_select_1",
+                name: "Select Tab 1",
+                description: "Switch to tab 1",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect2,
+                id: "tab_select_2",
+                name: "Select Tab 2",
+                description: "Switch to tab 2",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect3,
+                id: "tab_select_3",
+                name: "Select Tab 3",
+                description: "Switch to tab 3",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect4,
+                id: "tab_select_4",
+                name: "Select Tab 4",
+                description: "Switch to tab 4",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect5,
+                id: "tab_select_5",
+                name: "Select Tab 5",
+                description: "Switch to tab 5",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect6,
+                id: "tab_select_6",
+                name: "Select Tab 6",
+                description: "Switch to tab 6",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect7,
+                id: "tab_select_7",
+                name: "Select Tab 7",
+                description: "Switch to tab 7",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect8,
+                id: "tab_select_8",
+                name: "Select Tab 8",
+                description: "Switch to tab 8",
+                category: ActionCategory::Tab,
+            },
+            ActionDescriptor {
+                action: Action::TabSelect9,
+                id: "tab_select_9",
+                name: "Select Tab 9",
+                description: "Switch to tab 9",
+                category: ActionCategory::Tab,
+            },
         ];
         Self { descriptors }
     }
@@ -413,7 +521,7 @@ mod tests {
     fn registry_contains_all_actions() {
         let registry = ActionRegistry::new();
         let all = registry.all();
-        assert!(all.len() >= 30);
+        assert!(all.len() >= 43);
     }
 
     #[test]

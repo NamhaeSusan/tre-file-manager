@@ -43,4 +43,10 @@ q = "quit"
 # Remote
 C = "remote_connect"
 
+# Tabs
+t = "tab_new"
+w = "tab_close"
+"]" = "tab_next"
+"[" = "tab_prev"
+
 # Terminal (Ctrl+t is hardcoded in input.rs)
