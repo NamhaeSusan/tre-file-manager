@@ -2,6 +2,7 @@ import { onCleanup } from 'solid-js'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { createWsTicket } from '../lib/api'
 
 interface UseTerminalOptions {
@@ -17,11 +18,10 @@ function encodeToBase64(str: string): string {
   return btoa(binString)
 }
 
-// Binary-safe base64 decode: base64 -> Uint8Array -> string
-function decodeFromBase64(b64: string): string {
+// Binary-safe base64 decode: base64 -> Uint8Array
+function base64ToBytes(b64: string): Uint8Array {
   const binString = atob(b64)
-  const bytes = Uint8Array.from(binString, (c) => c.codePointAt(0)!)
-  return new TextDecoder().decode(bytes)
+  return Uint8Array.from(binString, (c) => c.codePointAt(0)!)
 }
 
 export function useTerminal(options: UseTerminalOptions) {
@@ -29,6 +29,7 @@ export function useTerminal(options: UseTerminalOptions) {
   let fitAddon: FitAddon | null = null
   let ws: WebSocket | null = null
   let resizeObserver: ResizeObserver | null = null
+  let streamDecoder: TextDecoder | null = null
 
   async function connect(container: HTMLDivElement) {
     // Create terminal
@@ -36,6 +37,7 @@ export function useTerminal(options: UseTerminalOptions) {
       cursorBlink: true,
       fontSize: 14,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      allowProposedApi: true,
       theme: {
         background: '#1a1b26',
         foreground: '#c0caf5',
@@ -46,7 +48,10 @@ export function useTerminal(options: UseTerminalOptions) {
     fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(new WebLinksAddon())
+    terminal.loadAddon(new Unicode11Addon())
+
     terminal.open(container)
+    terminal.unicode.activeVersion = '11'
     fitAddon.fit()
 
     // Connect WebSocket using single-use ticket (not JWT token in URL)
@@ -69,6 +74,7 @@ export function useTerminal(options: UseTerminalOptions) {
     }
 
     ws = new WebSocket(wsUrl)
+    streamDecoder = new TextDecoder('utf-8', { fatal: false })
 
     ws.onopen = () => {
       // Send initial resize
@@ -89,7 +95,8 @@ export function useTerminal(options: UseTerminalOptions) {
         const msg = JSON.parse(event.data)
         switch (msg.type) {
           case 'output': {
-            const decoded = decodeFromBase64(msg.data)
+            const bytes = base64ToBytes(msg.data)
+            const decoded = streamDecoder!.decode(bytes, { stream: true })
             terminal?.write(decoded)
             break
           }
@@ -155,6 +162,7 @@ export function useTerminal(options: UseTerminalOptions) {
     resizeObserver = null
     ws?.close()
     ws = null
+    streamDecoder = null
     terminal?.dispose()
     terminal = null
     fitAddon = null
