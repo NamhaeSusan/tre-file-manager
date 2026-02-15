@@ -200,6 +200,69 @@ cd crates/trefm-web/web && npm run dev
 # → Open http://localhost:3000
 ```
 
+## Deployment (Cloudflare Tunnel)
+
+trefm-web is designed to run behind [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) for zero-config HTTPS access from anywhere.
+
+### Architecture
+
+```
+Browser ──── HTTPS ────→ Cloudflare ──── Encrypted Tunnel ────→ cloudflared ──→ trefm-web
+              (CF cert)                   (outbound only)         (local)       (localhost:9090)
+```
+
+- **No port forwarding** — `cloudflared` initiates outbound connections only
+- **No TLS certificate needed** — Cloudflare handles TLS termination
+- **No DNS setup** — Cloudflare Tunnel auto-configures DNS
+- **Free tier** — Cloudflare Tunnel is free for personal use (Free plan, unlimited bandwidth)
+
+### Quick Start
+
+```bash
+# 1. Install cloudflared
+brew install cloudflared   # macOS
+# or: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+
+# 2. Authenticate and create tunnel (one-time)
+cloudflared tunnel login
+cloudflared tunnel create trefm
+
+# 3. Configure tunnel (in ~/.cloudflared/config.yml)
+# tunnel: <TUNNEL_ID>
+# credentials-file: ~/.cloudflared/<TUNNEL_ID>.json
+# ingress:
+#   - hostname: trefm.yourdomain.com
+#     service: http://localhost:9090
+#   - service: http_status:404
+
+# 4. Start everything with the provided script
+./scripts/start-remote.sh
+```
+
+The `start-remote.sh` script creates a tmux session with two panes:
+
+```
+tmux "trefm-remote"
+┌─────────────────────┬──────────────────────────┐
+│  trefm-web          │  cloudflared tunnel run  │
+│  (localhost:9090)   │  trefm                   │
+└─────────────────────┴──────────────────────────┘
+```
+
+### Authentication Flow
+
+trefm-web handles its own multi-step authentication (Cloudflare Tunnel is transparent):
+
+```
+POST /api/auth/login {password}
+  → Argon2 verify
+  → (optional) WebAuthn passkey challenge
+  → (optional) Discord OTP 6-digit code
+  → JWT issued
+```
+
+All subsequent requests use `Authorization: Bearer <JWT>`.
+
 ## Key Bindings
 
 | Key | Action |

@@ -199,6 +199,69 @@ cd crates/trefm-web/web && npm run dev
 # → http://localhost:3000 에서 접속
 ```
 
+## 배포 (Cloudflare Tunnel)
+
+trefm-web은 [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)을 통해 설정 없이 HTTPS로 어디서든 접속할 수 있도록 설계되었습니다.
+
+### 구조
+
+```
+브라우저 ──── HTTPS ────→ Cloudflare ──── 암호화 터널 ────→ cloudflared ──→ trefm-web
+               (CF 인증서)                (아웃바운드만)       (로컬)        (localhost:9090)
+```
+
+- **포트포워딩 불필요** — `cloudflared`가 아웃바운드 연결만 사용
+- **TLS 인증서 불필요** — Cloudflare가 TLS 종료 처리
+- **DNS 설정 불필요** — Cloudflare Tunnel이 DNS 자동 설정
+- **무료** — 개인용 Cloudflare Tunnel은 Free 플랜 (무제한 대역폭)
+
+### 빠른 시작
+
+```bash
+# 1. cloudflared 설치
+brew install cloudflared   # macOS
+# 또는: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+
+# 2. 인증 및 터널 생성 (최초 1회)
+cloudflared tunnel login
+cloudflared tunnel create trefm
+
+# 3. 터널 설정 (~/.cloudflared/config.yml)
+# tunnel: <TUNNEL_ID>
+# credentials-file: ~/.cloudflared/<TUNNEL_ID>.json
+# ingress:
+#   - hostname: trefm.yourdomain.com
+#     service: http://localhost:9090
+#   - service: http_status:404
+
+# 4. 스크립트로 한 번에 시작
+./scripts/start-remote.sh
+```
+
+`start-remote.sh` 스크립트는 tmux 세션에서 두 개 패널을 띄웁니다:
+
+```
+tmux "trefm-remote"
+┌─────────────────────┬──────────────────────────┐
+│  trefm-web          │  cloudflared tunnel run  │
+│  (localhost:9090)   │  trefm                   │
+└─────────────────────┴──────────────────────────┘
+```
+
+### 인증 흐름
+
+trefm-web이 자체적으로 다단계 인증을 처리합니다 (Cloudflare Tunnel은 투명하게 중계만):
+
+```
+POST /api/auth/login {password}
+  → Argon2 비밀번호 검증
+  → (선택) WebAuthn 패스키 챌린지
+  → (선택) Discord OTP 6자리 코드
+  → JWT 발급
+```
+
+이후 모든 요청은 `Authorization: Bearer <JWT>` 헤더를 사용합니다.
+
 ## 키 바인딩
 
 | 키 | 동작 |
