@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use axum::extract::State;
 use axum::routing::{get, post};
+use tower_http::limit::RequestBodyLimitLayer;
 use axum::Json;
 use axum::Router;
 
@@ -23,10 +24,16 @@ pub fn auth_router() -> Router<AppState> {
         .route("/auth/otp/verify", post(auth_handlers::otp_verify))
 }
 
-pub fn protected_router() -> Router<AppState> {
+pub fn protected_router(upload_limit: usize) -> Router<AppState> {
+    let upload_route = Router::new()
+        .route("/files/upload", post(files::upload_file))
+        .layer(RequestBodyLimitLayer::new(upload_limit));
+
     Router::new()
         .route("/files", get(files::list_directory))
+        .route("/files/download", get(files::download_file))
         .route("/ws/ticket", post(create_ws_ticket))
+        .merge(upload_route)
 }
 
 /// Creates a single-use, short-lived ticket for WebSocket authentication.

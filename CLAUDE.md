@@ -97,7 +97,7 @@ trefm/
 │   │   │   └── api/
 │   │   │       ├── mod.rs       # Auth + 파일 라우터 (auth_router + protected_router)
 │   │   │       ├── auth_handlers.rs  # 인증 엔드포인트 (login, logout, webauthn, OTP)
-│   │   │       └── files.rs     # 파일 목록 API 엔드포인트
+│   │   │       └── files.rs     # 파일 목록/다운로드/업로드 API 엔드포인트
 │   │   ├── web/
 │   │   │   ├── src/
 │   │   │   │   ├── index.tsx    # SolidJS 엔트리 포인트
@@ -114,7 +114,9 @@ trefm/
 │   │   │   │       ├── LoginPage.tsx     # 로그인 폼 (다단계 인증 지원)
 │   │   │   │       ├── Terminal.tsx      # 웹 터미널 컴포넌트
 │   │   │   │       ├── PasskeySetup.tsx  # 패스키 등록 컴포넌트
-│   │   │   │       └── FileTree.tsx      # 파일 트리 사이드바 컴포넌트
+│   │   │   │       ├── FileTree.tsx      # 파일 트리 사이드바 컴포넌트 (컨텍스트 메뉴 포함)
+│   │   │   │       ├── ContextMenu.tsx   # 우클릭 컨텍스트 메뉴 컴포넌트
+│   │   │   │       └── Toast.tsx         # 토스트 알림 컴포넌트
 │   │   │   ├── package.json
 │   │   │   └── vite.config.ts
 │   │   └── Cargo.toml
@@ -215,6 +217,7 @@ Phase 3: doc-updator → 문서 반영
 | 터미널 파싱 | `vt100` | VT100 이스케이프 시퀀스 파싱 |
 | 정적 파일 임베딩 | `rust-embed` | SPA 빌드를 바이너리에 임베드 |
 | MIME 타입 감지 | `mime_guess` | HTTP 응답용 Content-Type |
+| 스트리밍 IO | `tokio-util` | 파일 다운로드 스트리밍 (ReaderStream) |
 | 웹 터미널 | `@xterm/xterm` + `@xterm/addon-fit` + `@xterm/addon-web-links` + `@xterm/addon-unicode11` | 브라우저 터미널 에뮬레이션 (xterm.js, Unicode 11 와이드 문자 지원) |
 | 웹 WebAuthn | `@simplewebauthn/browser` | 브라우저 WebAuthn/패스키 API |
 
@@ -283,6 +286,10 @@ Phase 3: doc-updator → 문서 반영
 - xterm.js FitAddon + WebLinksAddon + Unicode11Addon 지원
 - 파일 트리 API (`/api/files`) + 사이드바 파일 탐색 UI (`FileTree` 컴포넌트)
 - 사이드바에서 디렉토리 이동/파일 열기 → 터미널 명령 연동 (`cd`, `nvim`)
+- 파일 다운로드 (스트리밍, `Content-Disposition: attachment`) + 업로드 (multipart, 설정 가능한 크기 제한)
+- 사이드바 우클릭 컨텍스트 메뉴 (파일 다운로드 / 디렉토리에 업로드)
+- 드래그앤드롭 파일 업로드 (사이드바 영역)
+- 토스트 알림 (성공/에러, 자동 사라짐)
 - `hash_password` CLI 도구 (Argon2 비밀번호 해시 생성)
 - 다중 사용자 지원 (사용자별 root 디렉토리 격리)
 - rust-embed 단일 바이너리 배포 (SPA 임베드)
@@ -391,8 +398,23 @@ Phase 3: doc-updator → 문서 반영
 - [x] 파일 트리 API + VS Code 스타일 사이드바
 - [x] hash_password CLI 도구
 - [x] 다중 사용자 지원
+- [x] 파일 다운로드/업로드 (스트리밍 다운로드, multipart 업로드, 드래그앤드롭, 컨텍스트 메뉴)
 
-### Phase W2 — 웹 확장 (미래)
+### Phase W2 — 웹 파일 매니저 기능
+- [ ] REST API: 파일 작업 (mkdir, rename, move, copy, delete)
+- [ ] REST API: Git 정보 (status, branch, log, diff)
+- [ ] REST API: 퍼지 검색
+- [ ] 파일 미리보기 패널 (텍스트 구문 강조, 이미지, 마크다운)
+- [ ] WebSocket 실시간 파일 변경 감지 (`/ws/fs`)
+- [ ] 모바일 반응형 UI
+
+### Phase W3 — 웹 고급 기능 (미래)
+- [ ] 웹 듀얼 패널
+- [ ] 웹 탭 시스템
+- [ ] 웹 커맨드 팔레트
+- [ ] 웹 키보드 단축키 (vim 스타일)
+- [ ] 다크/라이트 테마 전환
+- [ ] 드래그앤드롭 파일 이동/복사
 - [ ] Tauri GUI 프론트엔드
 
 ---

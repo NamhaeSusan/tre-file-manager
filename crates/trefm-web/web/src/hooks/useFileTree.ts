@@ -77,5 +77,42 @@ export function useFileTree() {
     return result
   }
 
-  return { nodes, loading, error, loadRoot, toggleExpand }
+  function collectExpandedPaths(nodeList: TreeNode[]): string[] {
+    const paths: string[] = []
+    for (const node of nodeList) {
+      if (node.expanded) {
+        paths.push(node.entry.path)
+        paths.push(...collectExpandedPaths(node.children))
+      }
+    }
+    return paths
+  }
+
+  async function refresh() {
+    const expandedPaths = collectExpandedPaths(nodes())
+
+    setLoading(true)
+    setError('')
+    try {
+      const res = await api.listDirectory()
+      let treeNodes: TreeNode[] = res.entries.map((entry) => ({
+        entry,
+        children: [],
+        loaded: false,
+        expanded: false,
+      }))
+
+      for (const path of expandedPaths) {
+        treeNodes = await updateNodeAtPath(treeNodes, path)
+      }
+
+      setNodes(treeNodes)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return { nodes, loading, error, loadRoot, toggleExpand, refresh }
 }

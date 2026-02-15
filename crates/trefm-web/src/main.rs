@@ -115,8 +115,10 @@ async fn main() -> anyhow::Result<()> {
         .layer(from_fn(middleware::bot_guard::bot_guard))
         .layer(GovernorLayer::<_, _, axum::body::Body>::new(governor_config));
 
+    let upload_limit = state.config.filesystem.max_upload_size_mb * 1024 * 1024;
+
     let base_router = axum::Router::new()
-        .nest("/api", auth_routes.merge(api::protected_router()))
+        .nest("/api", auth_routes.merge(api::protected_router(upload_limit)))
         .nest("/ws", ws::router())
         .fallback(static_files::static_handler);
 

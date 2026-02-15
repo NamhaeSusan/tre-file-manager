@@ -1,6 +1,8 @@
 import { For, Show, createSignal } from 'solid-js'
 import type { TreeNode } from '../hooks/useFileTree'
 import { getFileIcon, getChevronSvg } from '../lib/icons'
+import ContextMenu from './ContextMenu'
+import type { MenuItem } from './ContextMenu'
 
 const EDITABLE_EXTENSIONS = new Set([
   // Programming languages
@@ -42,6 +44,8 @@ interface FileTreeProps {
   onToggle: (path: string) => void
   onNavigate: (path: string) => void
   onOpenFile: (path: string) => void
+  onDownload?: (path: string) => void
+  onUpload?: (dirPath: string) => void
 }
 
 interface TreeItemProps {
@@ -52,6 +56,9 @@ interface TreeItemProps {
   onToggle: (path: string) => void
   onNavigate: (path: string) => void
   onOpenFile: (path: string) => void
+  onDownload?: (path: string) => void
+  onUpload?: (dirPath: string) => void
+  onContextMenu?: (x: number, y: number, path: string, isDir: boolean) => void
 }
 
 function TreeItem(props: TreeItemProps) {
@@ -90,6 +97,11 @@ function TreeItem(props: TreeItemProps) {
           opacity: isHidden() ? '0.5' : '1',
         }}
         onClick={handleClick}
+        onContextMenu={(e: MouseEvent) => {
+          e.preventDefault()
+          e.stopPropagation()
+          props.onContextMenu?.(e.clientX, e.clientY, props.node.entry.path, props.node.entry.is_dir)
+        }}
       >
         {/* Indent guides */}
         <For each={Array.from({ length: props.depth })}>
@@ -167,6 +179,9 @@ function TreeItem(props: TreeItemProps) {
               onToggle={props.onToggle}
               onNavigate={props.onNavigate}
               onOpenFile={props.onOpenFile}
+              onDownload={props.onDownload}
+              onUpload={props.onUpload}
+              onContextMenu={props.onContextMenu}
             />
           )}
         </For>
@@ -177,6 +192,11 @@ function TreeItem(props: TreeItemProps) {
 
 export default function FileTree(props: FileTreeProps) {
   const [selectedPath, setSelectedPath] = createSignal<string | null>(null)
+  const [contextMenu, setContextMenu] = createSignal<{x: number, y: number, path: string, isDir: boolean} | null>(null)
+
+  function handleContextMenu(x: number, y: number, path: string, isDir: boolean) {
+    setContextMenu({ x, y, path, isDir })
+  }
 
   return (
     <div class="sidebar-scroll overflow-y-auto h-full">
@@ -190,9 +210,31 @@ export default function FileTree(props: FileTreeProps) {
             onToggle={props.onToggle}
             onNavigate={props.onNavigate}
             onOpenFile={props.onOpenFile}
+            onDownload={props.onDownload}
+            onUpload={props.onUpload}
+            onContextMenu={handleContextMenu}
           />
         )}
       </For>
+      <Show when={contextMenu()}>
+        {(menu) => {
+          const items = (): MenuItem[] => {
+            const m = menu()
+            if (m.isDir) {
+              return [{ label: 'Upload here', onClick: () => props.onUpload?.(m.path) }]
+            }
+            return [{ label: 'Download', onClick: () => props.onDownload?.(m.path) }]
+          }
+          return (
+            <ContextMenu
+              x={menu().x}
+              y={menu().y}
+              items={items()}
+              onClose={() => setContextMenu(null)}
+            />
+          )
+        }}
+      </Show>
     </div>
   )
 }

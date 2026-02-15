@@ -65,3 +65,16 @@ pub struct ListDirResponse {
     pub entries: Vec<FileEntryDto>,
     pub current_path: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct DownloadQuery {
+    pub path: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UploadResponse {
+    pub success: bool,
+    pub path: String,
+    pub filename: String,
+    pub size: u64,
+}

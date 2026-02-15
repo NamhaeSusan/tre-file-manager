@@ -41,3 +41,6 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 
 # Session Store
 dashmap = "6"
+
+# Streaming
+tokio-util = { version = "0.7", features = ["io"] }

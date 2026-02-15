@@ -30,6 +30,8 @@ pub struct ServerConfig {
 pub struct FilesystemConfig {
     #[serde(default = "default_root")]
     pub root: PathBuf,
+    #[serde(default = "default_max_upload_size_mb")]
+    pub max_upload_size_mb: usize,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -91,6 +93,8 @@ fn default_bind_addr() -> SocketAddr {
     "0.0.0.0:9090".parse().unwrap()
 }
 
+fn default_max_upload_size_mb() -> usize { 100 }
+
 fn default_root() -> PathBuf {
     dirs_home().unwrap_or_else(|| PathBuf::from("/"))
 }
@@ -103,6 +107,7 @@ impl Default for FilesystemConfig {
     fn default() -> Self {
         Self {
             root: default_root(),
+            max_upload_size_mb: default_max_upload_size_mb(),
         }
     }
 }
@@ -175,6 +180,12 @@ impl ServerConfig {
 
         if let Ok(root) = std::env::var("TREFM_ROOT") {
             config.filesystem.root = PathBuf::from(root);
+        }
+
+        if let Ok(val) = std::env::var("TREFM_MAX_UPLOAD_SIZE_MB") {
+            if let Ok(mb) = val.parse::<usize>() {
+                config.filesystem.max_upload_size_mb = mb;
+            }
         }
 
         if let Ok(addr) = std::env::var("TREFM_BIND_ADDR") {

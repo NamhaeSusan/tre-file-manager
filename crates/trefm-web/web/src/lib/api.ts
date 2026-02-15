@@ -1,4 +1,4 @@
-import type { AuthStepResponse, ListDirResponse } from './types'
+import type { AuthStepResponse, ListDirResponse, UploadResponse } from './types'
 
 let authToken: string | null = null
 
@@ -103,4 +103,53 @@ export function sendBeaconLogout(): void {
     { type: 'application/json' },
   )
   navigator.sendBeacon('/api/auth/logout', blob)
+}
+
+export async function downloadFile(path: string): Promise<void> {
+  const params = `?path=${encodeURIComponent(path)}`
+  const headers: Record<string, string> = {}
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+
+  const res = await fetch(`/api/files/download${params}`, { headers })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(body.error || 'Download failed')
+  }
+
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = path.split('/').pop() || 'download'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export async function uploadFile(
+  file: File,
+  targetDir?: string
+): Promise<UploadResponse> {
+  const form = new FormData()
+  form.append('file', file)
+  if (targetDir) form.append('path', targetDir)
+
+  const headers: Record<string, string> = {}
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+
+  const res = await fetch('/api/files/upload', {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(body.error || 'Upload failed')
+  }
+  return res.json()
 }

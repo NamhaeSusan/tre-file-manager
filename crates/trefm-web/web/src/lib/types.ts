@@ -35,3 +35,10 @@ export interface AuthStepComplete {
 }
 
 export type AuthStepResponse = AuthStepNextStep | AuthStepComplete
+
+export interface UploadResponse {
+  success: boolean
+  path: string
+  filename: string
+  size: number
+}

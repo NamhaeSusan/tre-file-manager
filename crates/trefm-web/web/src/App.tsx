@@ -1,10 +1,11 @@
 import { Show, createSignal, createEffect, onCleanup } from 'solid-js'
 import { useAuth } from './hooks/useAuth'
 import { useFileTree } from './hooks/useFileTree'
-import { sendBeaconLogout } from './lib/api'
+import { sendBeaconLogout, downloadFile, uploadFile } from './lib/api'
 import LoginPage from './components/LoginPage'
 import Terminal from './components/Terminal'
 import FileTree from './components/FileTree'
+import Toast from './components/Toast'
 
 function escapeShellArg(arg: string): string {
   return "'" + arg.replace(/'/g, "'\\''") + "'"
@@ -27,6 +28,8 @@ export default function App() {
   const fileTree = useFileTree()
   const [sidebarOpen, setSidebarOpen] = createSignal(true)
   const [filesSectionOpen, setFilesSectionOpen] = createSignal(true)
+  const [toast, setToast] = createSignal<{message: string, type: 'success' | 'error'} | null>(null)
+  const [dragOver, setDragOver] = createSignal(false)
   let terminalHandle: { sendCommand: (cmd: string) => void } | null = null
 
   createEffect(() => {
@@ -56,6 +59,39 @@ export default function App() {
     if (terminalHandle) {
       terminalHandle.sendCommand(`nvim ${escapeShellArg(path)}`)
     }
+  }
+
+  async function handleDownload(path: string) {
+    try {
+      await downloadFile(path)
+      setToast({ message: `Downloaded: ${path.split('/').pop()}`, type: 'success' })
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'Download failed', type: 'error' })
+    }
+  }
+
+  async function handleUpload(files: FileList, targetDir?: string) {
+    try {
+      for (const file of Array.from(files)) {
+        await uploadFile(file, targetDir)
+      }
+      setToast({ message: `Uploaded ${files.length} file(s)`, type: 'success' })
+      fileTree.refresh()
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'Upload failed', type: 'error' })
+    }
+  }
+
+  function triggerUpload(targetDir?: string) {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.multiple = true
+    input.onchange = () => {
+      if (input.files && input.files.length > 0) {
+        handleUpload(input.files, targetDir)
+      }
+    }
+    input.click()
   }
 
   return (
@@ -185,12 +221,29 @@ export default function App() {
 
             {/* File Tree */}
             <Show when={filesSectionOpen()}>
-              <div class="flex-1 overflow-hidden">
+              <div
+                class="flex-1 overflow-hidden"
+                style={{
+                  border: dragOver() ? '2px dashed #094771' : '2px solid transparent',
+                  transition: 'border-color 0.2s',
+                }}
+                onDragOver={(e: DragEvent) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e: DragEvent) => {
+                  e.preventDefault()
+                  setDragOver(false)
+                  if (e.dataTransfer?.files.length) {
+                    handleUpload(e.dataTransfer.files)
+                  }
+                }}
+              >
                 <FileTree
                   nodes={fileTree.nodes()}
                   onToggle={(path) => fileTree.toggleExpand(path)}
                   onNavigate={handleNavigate}
                   onOpenFile={handleOpenFile}
+                  onDownload={handleDownload}
+                  onUpload={triggerUpload}
                 />
               </div>
             </Show>
@@ -207,6 +260,17 @@ export default function App() {
             }}
           />
         </div>
+
+        {/* Toast notifications */}
+        <Show when={toast()}>
+          {(t) => (
+            <Toast
+              message={t().message}
+              type={t().type}
+              onDismiss={() => setToast(null)}
+            />
+          )}
+        </Show>
       </div>
     </Show>
   )
