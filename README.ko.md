@@ -79,12 +79,27 @@ TreFM은 **코어 + 프론트엔드** 아키텍처를 기반으로 설계되었�
 
 ### 웹 원격 터미널
 - **전체화면 원격 터미널** — 브라우저에서 터미널 액세스
-- JWT 비밀번호 인증 + 다중 인증 지원 (WebAuthn + Discord OTP)
 - 로그인 후 바로 전체화면 터미널 (파일 매니저 필요 시 터미널에서 TUI 실행)
-- WebSocket PTY 터미널 (xterm.js + FitAddon + WebLinksAddon, JSON+base64 WebSocket 프로토콜, 1회용 티켓 인증, 자동 리사이즈)
 - rust-embed 단일 바이너리 배포 (SPA 바이너리 임베드)
 - trefm-core 의존성 없음 (독립 터미널 서버)
-- **보안**: 제한적 CORS, 내부 에러 마스킹, 리사이즈 검증, 상수 시간 OTP 비교
+- **다중 사용자 지원** — TOML 설정 파일로 사용자별 비밀번호 해시 및 루트 디렉토리 지정
+- **파일 트리 사이드바** — REST API를 통한 파일 탐색 (경로 탐색 보호 포함)
+- **WebSocket PTY 터미널** — xterm.js + FitAddon + WebLinksAddon + Unicode11 애드온, JSON+base64 프로토콜, 자동 리사이즈
+- **인증**:
+  - Argon2id 비밀번호 해싱 (내장 `hash_password` CLI 도구)
+  - WebAuthn / FIDO2 패스키 등록 및 인증
+  - Discord OTP 이중 인증 (웹훅을 통한 6자리 코드 전송)
+  - 다단계 세션 흐름 (비밀번호 -> 2FA -> JWT)
+  - 로그아웃 시 토큰 폐기
+  - 1회용 WebSocket 티켓 (쿼리 파라미터 JWT 대체)
+- **보안 강화**:
+  - rustls를 통한 TLS/HTTPS (`TREFM_TLS_CERT` / `TREFM_TLS_KEY`)
+  - 인증 라우트에 IP별 속도 제한 (`tower_governor`)
+  - 봇 가드 미들웨어 (알려진 크롤러 User-Agent 차단)
+  - 보안 헤더: CSP, X-Frame-Options DENY, HSTS (TLS 활성화 시), X-Content-Type-Options nosniff
+  - 제한적 CORS (동일 출처만), 1 MB 요청 본문 제한
+  - 인증 미설정 시 자동 localhost 바인딩 강제
+  - 세션 자동 정리 (만료된 세션, WS 티켓, 폐기된 토큰)
 
 ### 커스터마이즈
 - **커스텀 키 바인딩** — `keymap.toml`로 원하는 키에 원하는 액션 매핑
@@ -137,7 +152,7 @@ cargo run -p trefm-web
 
 #### 웹 설정
 
-모든 설정은 환경변수로 지정합니다:
+모든 설정은 환경변수(또는 TOML 설정 파일)로 지정합니다:
 
 | 환경변수 | 기본값 | 설명 |
 |----------|--------|------|
@@ -145,16 +160,32 @@ cargo run -p trefm-web
 | `TREFM_ROOT` | `$HOME` | 터미널 시작 작업 디렉토리 |
 | `TREFM_PASSWORD_HASH` | *(비어있음)* | Argon2 비밀번호 해시. 비어있으면 인증 건너뜀 (개발 모드) |
 | `TREFM_JWT_SECRET` | *(랜덤)* | JWT 서명 시크릿. 미설정 시 자동 생성. 약한 시크릿은 거부됨 |
-| `TREFM_WEB_CONFIG` | *(없음)* | TOML 설정 파일 경로 (선택사항) |
+| `TREFM_WEB_CONFIG` | *(없음)* | TOML 설정 파일 경로 (선택사항, 다중 사용자 지원) |
 | `TREFM_INSECURE` | *(미설정)* | `1`로 설정하면 인증 없이 외부 바인딩 허용 (비권장) |
+| `TREFM_WEBAUTHN_RP_ID` | `localhost` | WebAuthn Relying Party ID (도메인 이름) |
+| `TREFM_WEBAUTHN_RP_ORIGIN` | `https://<rp_id>` | WebAuthn Relying Party 오리진 URL |
+| `TREFM_DISCORD_WEBHOOK_URL` | *(없음)* | Discord 웹훅 URL (OTP 전송용). 설정 시 Discord 2FA 활성화 |
+| `TREFM_TLS_CERT` | *(없음)* | TLS 인증서 PEM 파일 경로. cert와 key 모두 설정 시 HTTPS 활성화 |
+| `TREFM_TLS_KEY` | *(없음)* | TLS 개인키 PEM 파일 경로 |
 
 인증을 사용하는 예시:
 ```bash
-# 비밀번호 해시 생성 (Python argon2-cffi 필요)
-HASH=$(python3 -c "from argon2 import PasswordHasher; print(PasswordHasher().hash('mypassword'))")
+# 내장 도구로 비밀번호 해시 생성
+HASH=$(cargo run -p trefm-web --bin hash_password)
 
 # 인증 활성화하여 실행
 TREFM_PASSWORD_HASH="$HASH" TREFM_JWT_SECRET="my-secret-key" cargo run -p trefm-web
+```
+
+TLS 및 WebAuthn을 사용하는 예시:
+```bash
+TREFM_TLS_CERT="/path/to/cert.pem" \
+TREFM_TLS_KEY="/path/to/key.pem" \
+TREFM_WEBAUTHN_RP_ID="example.com" \
+TREFM_WEBAUTHN_RP_ORIGIN="https://example.com" \
+TREFM_PASSWORD_HASH="$HASH" \
+TREFM_JWT_SECRET="my-secret-key" \
+cargo run -p trefm-web
 ```
 
 #### 개발 모드 (HMR)
@@ -330,11 +361,17 @@ q = "quit"
 | 크레이트 | 용도 |
 |----------|------|
 | `axum` + `tower` + `tower-http` | 웹 프레임워크, 미들웨어, CORS |
+| `axum-server` + `tls-rustls` | rustls를 통한 TLS/HTTPS 지원 |
 | `jsonwebtoken` | JWT 토큰 생성/검증 |
 | `argon2` | 비밀번호 해싱 (Argon2id) |
+| `webauthn-rs` + `webauthn-rs-proto` | WebAuthn / FIDO2 패스키 인증 |
+| `tower_governor` | 인증 라우트에 IP별 속도 제한 |
+| `reqwest` | Discord OTP 웹훅용 HTTP 클라이언트 |
+| `dashmap` | 동시 세션, 티켓, 폐기 토큰 저장소 |
 | `rust-embed` | SPA 빌드를 바이너리에 임베드 |
 | `mime_guess` | HTTP 응답용 MIME 타입 감지 |
 | `uuid` + `rand` | 랜덤 ID 생성 |
+| `url` | WebAuthn 오리진용 URL 파싱 |
 | `portable-pty` | WebSocket 터미널용 PTY 스폰 |
 | `base64` | WebSocket PTY I/O용 Base64 인코딩 |
 | `futures` | WebSocket 스트림 유틸리티 |
@@ -345,6 +382,8 @@ q = "quit"
 | `@xterm/xterm` | 브라우저 터미널 에뮬레이터 |
 | `@xterm/addon-fit` | 터미널 컨테이너 크기 자동 맞춤 |
 | `@xterm/addon-web-links` | 터미널 출력에서 클릭 가능한 링크 |
+| `@xterm/addon-unicode11` | Unicode 11 와이드 문자 지원 |
+| `@simplewebauthn/browser` | WebAuthn / FIDO2 브라우저 API 클라이언트 |
 
 ## 라이선스
 

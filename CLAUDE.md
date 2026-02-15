@@ -71,34 +71,50 @@ trefm/
 │   ├── trefm-web/           # 🌐 웹 원격 터미널
 │   │   ├── src/
 │   │   │   ├── main.rs          # Axum 서버 부트스트랩
-│   │   │   ├── config.rs        # ServerConfig (TOML + env vars)
-│   │   │   ├── state.rs         # AppState (공유 상태)
+│   │   │   ├── config.rs        # ServerConfig (TOML + env vars + TLS + 다중 사용자)
+│   │   │   ├── state.rs         # AppState (세션 스토어, WebAuthn, WsTickets, 토큰 폐기)
 │   │   │   ├── error.rs         # AppError → HTTP 상태 코드 매핑
 │   │   │   ├── dto.rs           # LoginRequest/LoginResponse JSON 타입
 │   │   │   ├── static_files.rs  # rust-embed SPA 서빙
+│   │   │   ├── bin/
+│   │   │   │   └── hash_password.rs  # Argon2 비밀번호 해시 생성 CLI
 │   │   │   ├── auth/
-│   │   │   │   ├── mod.rs       # Auth 모듈 exports
+│   │   │   │   ├── mod.rs       # Auth 모듈 exports (jwt, password, middleware, session, discord_otp, webauthn)
 │   │   │   │   ├── jwt.rs       # JWT 토큰 생성/검증
 │   │   │   │   ├── password.rs  # Argon2 비밀번호 해싱
-│   │   │   │   └── middleware.rs# JWT 미들웨어
+│   │   │   │   ├── middleware.rs# JWT 미들웨어 (토큰 폐기 확인 포함)
+│   │   │   │   ├── session.rs   # 인메모리 세션 스토어 (DashMap, TTL 자동 정리)
+│   │   │   │   ├── discord_otp.rs    # Discord OTP 2FA (웹훅으로 코드 전송)
+│   │   │   │   └── webauthn_manager.rs # WebAuthn 패스키 인증 (FIDO2)
+│   │   │   ├── middleware/
+│   │   │   │   ├── mod.rs       # 미들웨어 모듈 exports
+│   │   │   │   ├── bot_guard.rs      # 봇 가드 미들웨어 (User-Agent 검증)
+│   │   │   │   ├── security_headers.rs # 보안 헤더 (CSP, HSTS, X-Content-Type-Options 등)
+│   │   │   │   └── rate_limit.rs     # Rate limit 미들웨어 (레거시, tower_governor 사용)
 │   │   │   ├── ws/
 │   │   │   │   ├── mod.rs       # WebSocket 라우터
 │   │   │   │   └── terminal.rs  # PTY 스폰 + WebSocket 릴레이
 │   │   │   └── api/
-│   │   │       └── mod.rs       # 로그인 엔드포인트만
+│   │   │       ├── mod.rs       # Auth + 파일 라우터 (auth_router + protected_router)
+│   │   │       ├── auth_handlers.rs  # 인증 엔드포인트 (login, logout, webauthn, OTP)
+│   │   │       └── files.rs     # 파일 목록 API 엔드포인트
 │   │   ├── web/
 │   │   │   ├── src/
 │   │   │   │   ├── index.tsx    # SolidJS 엔트리 포인트
-│   │   │   │   ├── App.tsx      # 루트 컴포넌트 (로그인 + 전체화면 터미널)
+│   │   │   │   ├── App.tsx      # 루트 컴포넌트 (VS Code 스타일 레이아웃: 사이드바 + 터미널)
 │   │   │   │   ├── lib/
-│   │   │   │   │   ├── types.ts # TypeScript 타입 정의 (LoginResponse만)
-│   │   │   │   │   └── api.ts   # API 클라이언트 (로그인만)
+│   │   │   │   │   ├── types.ts # TypeScript 타입 (AuthStepResponse, FileEntry, ListDirResponse 등)
+│   │   │   │   │   ├── api.ts   # API 클라이언트 (로그인, 로그아웃, WebAuthn, OTP, 파일, WS 티켓)
+│   │   │   │   │   └── icons.ts # 파일 아이콘 유틸리티
 │   │   │   │   ├── hooks/
 │   │   │   │   │   ├── useAuth.ts        # 인증 상태 훅
-│   │   │   │   │   └── useTerminal.ts    # xterm.js + WebSocket 터미널 훅
+│   │   │   │   │   ├── useTerminal.ts    # xterm.js + WebSocket 터미널 훅
+│   │   │   │   │   └── useFileTree.ts    # 파일 트리 데이터 훅
 │   │   │   │   └── components/
-│   │   │   │       ├── LoginPage.tsx     # 로그인 폼
-│   │   │   │       └── Terminal.tsx      # 웹 터미널 컴포넌트
+│   │   │   │       ├── LoginPage.tsx     # 로그인 폼 (다단계 인증 지원)
+│   │   │   │       ├── Terminal.tsx      # 웹 터미널 컴포넌트
+│   │   │   │       ├── PasskeySetup.tsx  # 패스키 등록 컴포넌트
+│   │   │   │       └── FileTree.tsx      # 파일 트리 사이드바 컴포넌트
 │   │   │   ├── package.json
 │   │   │   └── vite.config.ts
 │   │   └── Cargo.toml
@@ -178,6 +194,11 @@ Phase 3: doc-updator → 문서 반영
 | 웹 프레임워크 | `axum` + `tower` + `tower-http` | 웹 서버 + 인증 API |
 | 웹 프론트엔드 | `SolidJS` + `Vite` + `TailwindCSS` | 로그인 + 터미널 UI |
 | 인증 | `jsonwebtoken` + `argon2` | JWT 토큰 + 비밀번호 해싱 |
+| WebAuthn | `webauthn-rs` + `webauthn-rs-proto` | 패스키(FIDO2) 인증 |
+| TLS | `axum-server` + `tls-rustls` | HTTPS/TLS 지원 |
+| Rate Limiting | `tower_governor` | Per-IP 요청 제한 |
+| Discord OTP | `reqwest` | Discord 웹훅으로 OTP 코드 전송 |
+| 동시성 스토어 | `dashmap` | 세션/티켓/토큰 폐기 동시 접근 저장소 |
 | 비동기 런타임 | `tokio` | 파일 워칭, 비동기 IO |
 | Git 연동 | `git2` (libgit2 바인딩) | git status, branch, log |
 | 파일 감시 | `notify` | 실시간 파일 변경 감지 |
@@ -194,7 +215,8 @@ Phase 3: doc-updator → 문서 반영
 | 터미널 파싱 | `vt100` | VT100 이스케이프 시퀀스 파싱 |
 | 정적 파일 임베딩 | `rust-embed` | SPA 빌드를 바이너리에 임베드 |
 | MIME 타입 감지 | `mime_guess` | HTTP 응답용 Content-Type |
-| 웹 터미널 | `@xterm/xterm` + `@xterm/addon-fit` + `@xterm/addon-web-links` | 브라우저 터미널 에뮬레이션 (xterm.js) |
+| 웹 터미널 | `@xterm/xterm` + `@xterm/addon-fit` + `@xterm/addon-web-links` + `@xterm/addon-unicode11` | 브라우저 터미널 에뮬레이션 (xterm.js, Unicode 11 와이드 문자 지원) |
+| 웹 WebAuthn | `@simplewebauthn/browser` | 브라우저 WebAuthn/패스키 API |
 
 ---
 
@@ -246,12 +268,23 @@ Phase 3: doc-updator → 문서 반영
 - 순환 네비게이션 (마지막 탭에서 다음 → 첫 탭으로)
 
 ### 🌐 웹 원격 터미널 (trefm-web)
-- 브라우저에서 전체화면 원격 터미널 액세스
-- JWT 비밀번호 인증 시스템
-- 로그인 후 바로 전체화면 터미널 (파일 매니저 필요 시 터미널에서 TUI 실행)
+- 브라우저에서 VS Code 스타일 레이아웃 (사이드바 + 전체화면 터미널)
+- 다단계 인증: JWT 비밀번호 → WebAuthn 패스키(FIDO2) 또는 Discord OTP 2FA
+- WebAuthn 패스키 등록/인증 (FIDO2, `webauthn-rs` + `@simplewebauthn/browser`)
+- Discord OTP 2FA (웹훅으로 일회용 코드 전송, 5분 TTL)
+- TLS/HTTPS 지원 (`axum-server` + `tls-rustls`, 자동 HSTS 헤더)
+- Rate Limiting (`tower_governor`, Per-IP 요청 제한)
+- 봇 가드 미들웨어 (User-Agent 검증)
+- 보안 헤더 (CSP, X-Content-Type-Options, X-Frame-Options 등)
+- 인메모리 세션 스토어 (`DashMap`, 자동 만료 정리)
+- 토큰 폐기 (로그아웃 시 JWT 무효화, revoked tokens 자동 정리)
+- WS 티켓 인증 (일회용 단기 티켓으로 JWT 쿼리 파라미터 대체, 30초 TTL)
 - WebSocket PTY 터미널 (xterm.js + JSON/base64 프로토콜)
-- JWT 쿼리 파라미터 인증으로 WebSocket 보안
-- xterm.js FitAddon + WebLinksAddon 지원, 컨테이너 리사이즈 자동 대응
+- xterm.js FitAddon + WebLinksAddon + Unicode11Addon 지원
+- 파일 트리 API (`/api/files`) + 사이드바 파일 탐색 UI (`FileTree` 컴포넌트)
+- 사이드바에서 디렉토리 이동/파일 열기 → 터미널 명령 연동 (`cd`, `nvim`)
+- `hash_password` CLI 도구 (Argon2 비밀번호 해시 생성)
+- 다중 사용자 지원 (사용자별 root 디렉토리 격리)
 - rust-embed 단일 바이너리 배포 (SPA 임베드)
 - trefm-core 의존성 없음 (독립 실행)
 
@@ -348,6 +381,16 @@ Phase 3: doc-updator → 문서 반영
 - [x] WebSocket PTY 터미널 (xterm.js + JSON/base64 프로토콜)
 - [x] 전체화면 터미널 UI (로그인 → 바로 터미널)
 - [x] trefm-core 의존성 제거 (순수 터미널 서버)
+- [x] WebAuthn 패스키 인증 (FIDO2)
+- [x] Discord OTP 2FA
+- [x] TLS/HTTPS 지원 (axum-server + tls-rustls)
+- [x] Rate Limiting (tower_governor, Per-IP)
+- [x] 보안 미들웨어 (봇 가드, CSP, HSTS 등)
+- [x] 세션 관리 + 토큰 폐기 (로그아웃)
+- [x] WS 티켓 인증 (JWT 쿼리 파라미터 대체)
+- [x] 파일 트리 API + VS Code 스타일 사이드바
+- [x] hash_password CLI 도구
+- [x] 다중 사용자 지원
 
 ### Phase W2 — 웹 확장 (미래)
 - [ ] Tauri GUI 프론트엔드

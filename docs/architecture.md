@@ -1,6 +1,6 @@
 # TreFM Architecture
 
-**Last Updated:** 2026-02-08
+**Last Updated:** 2026-02-15
 
 ## Overview
 
@@ -68,35 +68,51 @@ trefm-tui/src/
     └── tab_bar.rs      # Tab bar widget for multi-tab navigation
 
 trefm-web/src/          # 순수 원격 터미널 서버 (trefm-core 의존성 없음)
-├── main.rs             # Axum server bootstrap (bind, routes, middleware)
+├── main.rs             # Axum server bootstrap (bind, routes, TLS, middleware)
 ├── config.rs           # ServerConfig (TOML + env vars)
-├── state.rs            # AppState (shared config)
+├── state.rs            # AppState (session store, ws_tickets, revoked tokens, WebAuthn)
 ├── error.rs            # AppError → HTTP status code mapping
-├── dto.rs              # LoginRequest/LoginResponse JSON DTOs
+├── dto.rs              # JSON DTOs (login, auth steps, file entries)
 ├── static_files.rs     # rust-embed SPA serving
+├── bin/
+│   └── hash_password.rs  # CLI tool for Argon2 password hash generation
 ├── auth/
 │   ├── mod.rs          # Auth module exports
 │   ├── jwt.rs          # JWT token generation/validation
 │   ├── password.rs     # Argon2 password hashing/verification
-│   └── middleware.rs   # JWT authentication middleware
+│   ├── middleware.rs   # JWT authentication middleware
+│   ├── session.rs      # SessionStore (multi-step auth sessions with TTL)
+│   ├── discord_otp.rs  # OTP generation + Discord webhook delivery
+│   └── webauthn_manager.rs  # WebAuthn/Passkey registration and authentication
+├── middleware/
+│   ├── mod.rs          # Middleware module exports
+│   ├── bot_guard.rs    # User-Agent bot/scraper blocking
+│   ├── security_headers.rs  # Security headers (X-Frame-Options, CSP, etc.)
+│   └── rate_limit.rs   # Rate limit configuration docs (tower_governor)
 ├── ws/
 │   ├── mod.rs          # WebSocket router
 │   └── terminal.rs     # PTY spawn + WebSocket relay (JSON+base64 protocol)
 └── api/
-    └── mod.rs          # Login endpoint only
+    ├── mod.rs          # Auth + protected routers, WS ticket endpoint
+    ├── auth_handlers.rs  # Login, logout, OTP verify, WebAuthn challenge/verify/register
+    └── files.rs        # Directory listing API (per-user root)
 
-trefm-web/web/src/      # SolidJS frontend (로그인 + 전체화면 터미널)
+trefm-web/web/src/      # SolidJS frontend (로그인 + 터미널 + 파일 사이드바)
 ├── index.tsx           # Entry point
-├── App.tsx             # Root component (login → full-screen terminal)
+├── App.tsx             # Root component (login → terminal + file sidebar)
 ├── lib/
-│   ├── types.ts        # TypeScript type definitions (LoginResponse only)
-│   └── api.ts          # API client (login only)
+│   ├── types.ts        # TypeScript types (AuthStepResponse, FileEntry, ListDirResponse)
+│   ├── api.ts          # API client (auth, files, WebAuthn, OTP, logout)
+│   └── icons.ts        # File/folder SVG icon mapping by extension
 ├── hooks/
 │   ├── useAuth.ts      # Authentication state hook
-│   └── useTerminal.ts  # xterm.js + WebSocket terminal hook
+│   ├── useTerminal.ts  # xterm.js + WebSocket terminal hook
+│   └── useFileTree.ts  # Lazy-loading directory tree state hook
 └── components/
-    ├── LoginPage.tsx   # Login form
-    └── Terminal.tsx    # WebSocket PTY terminal component
+    ├── LoginPage.tsx   # Login form (multi-step auth with OTP)
+    ├── Terminal.tsx    # WebSocket PTY terminal component
+    ├── PasskeySetup.tsx  # WebAuthn passkey registration UI
+    └── FileTree.tsx   # VS Code-style file tree sidebar
 ```
 
 ## Design Patterns
@@ -265,15 +281,21 @@ Modal modes (Search, Rename, Confirm, CommandPalette, etc.) bypass the keymap an
 ### trefm-web (순수 원격 터미널 — trefm-core 의존성 없음)
 | Crate | Purpose |
 |-------|---------|
-| `axum` | Web framework (handlers, routing, extraction) |
-| `tower` + `tower-http` | Middleware stack, CORS, tracing |
+| `axum` | Web framework (handlers, routing, extraction, WebSocket) |
+| `axum-server` | TLS (rustls) server binding |
+| `tower` + `tower-http` | Middleware stack, CORS, tracing, request size limits |
+| `tower_governor` | Per-IP rate limiting for auth endpoints |
 | `tokio` | Async runtime |
-| `serde` + `serde_json` | JSON serialization for login API |
+| `serde` + `serde_json` | JSON serialization for APIs |
 | `jsonwebtoken` | JWT token generation/validation |
 | `argon2` | Argon2id password hashing |
+| `webauthn-rs` + `webauthn-rs-proto` | WebAuthn/Passkey authentication |
+| `reqwest` | Discord webhook HTTP client for OTP delivery |
+| `dashmap` | Concurrent hash map (sessions, ws_tickets, revoked tokens) |
 | `rust-embed` | Embed SPA build into binary |
 | `mime_guess` | MIME type detection for Content-Type headers |
-| `uuid` + `rand` | Random session ID generation |
+| `uuid` + `rand` | Random session/ticket ID generation |
+| `url` | URL parsing for WebAuthn RP origin |
 | `portable-pty` | PTY spawning for WebSocket terminal |
 | `base64` | Base64 encoding for PTY I/O over WebSocket |
 | `futures` | Stream utilities for WebSocket handling |
