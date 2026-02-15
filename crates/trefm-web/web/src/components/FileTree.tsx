@@ -2,10 +2,46 @@ import { For, Show, createSignal } from 'solid-js'
 import type { TreeNode } from '../hooks/useFileTree'
 import { getFileIcon, getChevronSvg } from '../lib/icons'
 
+const EDITABLE_EXTENSIONS = new Set([
+  // Programming languages
+  'rs', 'ts', 'tsx', 'js', 'jsx', 'py', 'go', 'java',
+  'c', 'cpp', 'cc', 'h', 'hpp', 'cs', 'rb', 'php',
+  'swift', 'kt', 'scala', 'lua', 'zig', 'hs', 'ex', 'exs',
+  'clj', 'dart', 'r', 'pl', 'elm', 'erl', 'ml', 'v',
+  // Web
+  'html', 'htm', 'css', 'scss', 'sass', 'less', 'svg',
+  // Config/data
+  'json', 'yaml', 'yml', 'toml', 'xml', 'ini', 'env',
+  'conf', 'cfg', 'properties',
+  // Shell/scripts
+  'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd',
+  // Text-based documents
+  'md', 'txt', 'rst', 'adoc', 'org', 'tex', 'log',
+  // Dev misc
+  'sql', 'graphql', 'gql', 'proto', 'vim', 'dockerfile',
+  'makefile', 'cmake', 'gradle', 'lock',
+])
+
+const EDITABLE_FILENAMES = new Set([
+  'makefile', 'dockerfile', 'vagrantfile', 'gemfile',
+  'rakefile', 'procfile', 'brewfile', 'justfile',
+  '.gitignore', '.gitattributes', '.editorconfig',
+  '.env', '.prettierrc', '.eslintrc', '.babelrc',
+])
+
+function isEditable(filename: string): boolean {
+  const lower = filename.toLowerCase()
+  if (EDITABLE_FILENAMES.has(lower)) return true
+  const dotIdx = lower.lastIndexOf('.')
+  if (dotIdx === -1) return false
+  return EDITABLE_EXTENSIONS.has(lower.slice(dotIdx + 1))
+}
+
 interface FileTreeProps {
   nodes: TreeNode[]
   onToggle: (path: string) => void
   onNavigate: (path: string) => void
+  onOpenFile: (path: string) => void
 }
 
 interface TreeItemProps {
@@ -15,6 +51,7 @@ interface TreeItemProps {
   onSelect: (path: string) => void
   onToggle: (path: string) => void
   onNavigate: (path: string) => void
+  onOpenFile: (path: string) => void
 }
 
 function TreeItem(props: TreeItemProps) {
@@ -23,6 +60,8 @@ function TreeItem(props: TreeItemProps) {
     if (props.node.entry.is_dir) {
       props.onToggle(props.node.entry.path)
       props.onNavigate(props.node.entry.path)
+    } else if (isEditable(props.node.entry.name)) {
+      props.onOpenFile(props.node.entry.path)
     }
   }
 
@@ -127,6 +166,7 @@ function TreeItem(props: TreeItemProps) {
               onSelect={props.onSelect}
               onToggle={props.onToggle}
               onNavigate={props.onNavigate}
+              onOpenFile={props.onOpenFile}
             />
           )}
         </For>
@@ -149,6 +189,7 @@ export default function FileTree(props: FileTreeProps) {
             onSelect={setSelectedPath}
             onToggle={props.onToggle}
             onNavigate={props.onNavigate}
+            onOpenFile={props.onOpenFile}
           />
         )}
       </For>

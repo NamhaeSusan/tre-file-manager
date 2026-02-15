@@ -6,6 +6,8 @@ use crate::state::AppState;
 
 pub struct AuthUser {
     pub sub: String,
+    #[allow(dead_code)]
+    pub jti: String,
 }
 
 impl FromRequestParts<AppState> for AuthUser {
@@ -20,6 +22,7 @@ impl FromRequestParts<AppState> for AuthUser {
         if !has_auth {
             return Ok(AuthUser {
                 sub: "anonymous".to_string(),
+                jti: String::new(),
             });
         }
 
@@ -36,6 +39,13 @@ impl FromRequestParts<AppState> for AuthUser {
         let claims = super::jwt::verify_token(&state.config.auth.jwt_secret, token)
             .map_err(|_| AppError::Auth("Invalid or expired token".to_string()))?;
 
-        Ok(AuthUser { sub: claims.sub })
+        if state.revoked_tokens.contains_key(&claims.jti) {
+            return Err(AppError::Auth("Token has been revoked".to_string()));
+        }
+
+        Ok(AuthUser {
+            sub: claims.sub,
+            jti: claims.jti,
+        })
     }
 }

@@ -2,12 +2,18 @@ import { createSignal } from 'solid-js'
 import * as api from '../lib/api'
 import type { AuthStepResponse } from '../lib/types'
 
+// Migrate any stale localStorage tokens to prevent leftover access
+if (typeof localStorage !== 'undefined') {
+  localStorage.removeItem('trefm_token')
+  localStorage.removeItem('trefm_username')
+}
+
 const [token, setTokenSignal] = createSignal<string | null>(
-  localStorage.getItem('trefm_token')
+  sessionStorage.getItem('trefm_token')
 )
 
 const [username, setUsernameSignal] = createSignal<string | null>(
-  localStorage.getItem('trefm_username')
+  sessionStorage.getItem('trefm_username')
 )
 
 if (token()) {
@@ -28,7 +34,7 @@ export function useAuth() {
       // SolidJS effect (loadRoot) fires synchronously on setTokenSignal,
       // so api.setToken must be called first for requests to include the token.
       api.setToken(res.token)
-      localStorage.setItem('trefm_token', res.token)
+      sessionStorage.setItem('trefm_token', res.token)
       setTokenSignal(res.token)
       setPhase('idle')
       setSessionId(null)
@@ -40,7 +46,7 @@ export function useAuth() {
 
   async function loginFn(usernameInput: string, password: string) {
     setUsernameSignal(usernameInput)
-    localStorage.setItem('trefm_username', usernameInput)
+    sessionStorage.setItem('trefm_username', usernameInput)
     const res = await api.login(usernameInput, password)
     handleAuthResponse(res)
   }
@@ -66,12 +72,13 @@ export function useAuth() {
     handleAuthResponse(res)
   }
 
-  function logout() {
+  async function logout() {
+    await api.logout()
     setTokenSignal(null)
     api.setToken(null)
-    localStorage.removeItem('trefm_token')
+    sessionStorage.removeItem('trefm_token')
     setUsernameSignal(null)
-    localStorage.removeItem('trefm_username')
+    sessionStorage.removeItem('trefm_username')
     setPhase('idle')
     setSessionId(null)
   }

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct Claims {
     pub sub: String,
     pub exp: usize,
+    pub jti: String,
 }
 
 pub fn create_token(jwt_secret: &str, ttl_hours: u64, username: &str) -> anyhow::Result<(String, u64)> {
@@ -16,6 +17,7 @@ pub fn create_token(jwt_secret: &str, ttl_hours: u64, username: &str) -> anyhow:
     let claims = Claims {
         sub: username.to_string(),
         exp: expires_at as usize,
+        jti: uuid::Uuid::new_v4().to_string(),
     };
 
     let token = encode(

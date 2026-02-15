@@ -27,7 +27,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     // Only clear stored token if we had one (not during auth flow)
     if (authToken) {
       authToken = null
-      localStorage.removeItem('trefm_token')
+      sessionStorage.removeItem('trefm_token')
     }
     throw new Error(body.error || 'Unauthorized')
   }
@@ -86,4 +86,21 @@ export async function finishPasskeyRegistration(sessionId: string, credential: a
 
 export async function createWsTicket(): Promise<{ ticket: string }> {
   return request('/api/ws/ticket', { method: 'POST' })
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await request('/api/auth/logout', { method: 'POST' })
+  } catch {
+    // Ignore errors — token may already be invalid
+  }
+}
+
+export function sendBeaconLogout(): void {
+  if (!authToken) return
+  const blob = new Blob(
+    [JSON.stringify({ token: authToken })],
+    { type: 'application/json' },
+  )
+  navigator.sendBeacon('/api/auth/logout', blob)
 }

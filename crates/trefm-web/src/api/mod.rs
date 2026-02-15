@@ -15,6 +15,7 @@ use crate::state::AppState;
 pub fn auth_router() -> Router<AppState> {
     Router::new()
         .route("/auth/login", post(auth_handlers::login))
+        .route("/auth/logout", post(auth_handlers::logout))
         .route("/auth/webauthn/challenge", post(auth_handlers::webauthn_challenge))
         .route("/auth/webauthn/verify", post(auth_handlers::webauthn_verify))
         .route("/auth/webauthn/register/start", post(auth_handlers::webauthn_register_start))

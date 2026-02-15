@@ -1,6 +1,7 @@
-import { Show, createSignal, createEffect } from 'solid-js'
+import { Show, createSignal, createEffect, onCleanup } from 'solid-js'
 import { useAuth } from './hooks/useAuth'
 import { useFileTree } from './hooks/useFileTree'
+import { sendBeaconLogout } from './lib/api'
 import LoginPage from './components/LoginPage'
 import Terminal from './components/Terminal'
 import FileTree from './components/FileTree'
@@ -14,6 +15,9 @@ const FILES_ICON_SVG =
 
 const CLOSE_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8.707l3.646 3.647.708-.707L8.707 8l3.647-3.646-.707-.708L8 7.293 4.354 3.646l-.707.708L7.293 8l-3.646 3.646.707.708L8 8.707z"/></svg>'
+
+const LOGOUT_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
 
 const CHEVRON_DOWN_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M6 4l4 4-4 4"/></svg>'
@@ -31,9 +35,26 @@ export default function App() {
     }
   })
 
+  // Server-side logout on browser/tab close (not on same-tab refresh)
+  createEffect(() => {
+    if (auth.isLoggedIn()) {
+      const handler = (e: PageTransitionEvent) => {
+        if (!e.persisted) sendBeaconLogout()
+      }
+      window.addEventListener('pagehide', handler)
+      onCleanup(() => window.removeEventListener('pagehide', handler))
+    }
+  })
+
   function handleNavigate(path: string) {
     if (terminalHandle) {
       terminalHandle.sendCommand(`cd ${escapeShellArg(path)}`)
+    }
+  }
+
+  function handleOpenFile(path: string) {
+    if (terminalHandle) {
+      terminalHandle.sendCommand(`nvim ${escapeShellArg(path)}`)
     }
   }
 
@@ -107,22 +128,40 @@ export default function App() {
               >
                 Explorer
               </span>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                class="flex items-center justify-center"
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#858585',
-                  'border-radius': '3px',
-                }}
-                title="Close sidebar"
-              >
-                <span innerHTML={CLOSE_ICON_SVG} />
-              </button>
+              <div class="flex items-center" style={{ gap: '2px' }}>
+                <button
+                  onClick={() => auth.logout()}
+                  class="flex items-center justify-center"
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#858585',
+                    'border-radius': '3px',
+                  }}
+                  title={`Logout (${auth.username() ?? ''})`}
+                >
+                  <span innerHTML={LOGOUT_ICON_SVG} />
+                </button>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  class="flex items-center justify-center"
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#858585',
+                    'border-radius': '3px',
+                  }}
+                  title="Close sidebar"
+                >
+                  <span innerHTML={CLOSE_ICON_SVG} />
+                </button>
+              </div>
             </div>
 
             {/* FILES Section Header */}
@@ -151,6 +190,7 @@ export default function App() {
                   nodes={fileTree.nodes()}
                   onToggle={(path) => fileTree.toggleExpand(path)}
                   onNavigate={handleNavigate}
+                  onOpenFile={handleOpenFile}
                 />
               </div>
             </Show>

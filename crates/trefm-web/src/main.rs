@@ -62,17 +62,21 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let ws_tickets = Arc::new(dashmap::DashMap::new());
+    let revoked_tokens = Arc::new(dashmap::DashMap::new());
 
     let state = AppState {
         config: Arc::new(config),
         session_store: session_store.clone(),
         webauthn,
         ws_tickets: ws_tickets.clone(),
+        revoked_tokens: revoked_tokens.clone(),
     };
 
-    // Session + ticket cleanup task
+    // Session + ticket + revoked token cleanup task
     let cleanup_store = session_store.clone();
     let cleanup_tickets = ws_tickets.clone();
+    let cleanup_revoked = revoked_tokens.clone();
+    let jwt_ttl_hours = state.config.auth.jwt_ttl_hours;
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
         loop {
@@ -81,6 +85,11 @@ async fn main() -> anyhow::Result<()> {
             // Remove expired WebSocket tickets (>30s)
             cleanup_tickets.retain(|_, t: &mut crate::state::WsTicket| {
                 t.created_at.elapsed() < std::time::Duration::from_secs(30)
+            });
+            // Remove revoked tokens older than JWT TTL (expired tokens are rejected by jsonwebtoken)
+            let max_age = std::time::Duration::from_secs(jwt_ttl_hours * 3600);
+            cleanup_revoked.retain(|_, revoked_at: &mut std::time::Instant| {
+                revoked_at.elapsed() < max_age
             });
         }
     });

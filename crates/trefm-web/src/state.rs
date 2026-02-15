@@ -20,4 +20,6 @@ pub struct AppState {
     pub session_store: Arc<SessionStore>,
     pub webauthn: Option<Arc<WebAuthnManager>>,
     pub ws_tickets: Arc<DashMap<String, WsTicket>>,
+    /// Revoked JWT token IDs (jti). Tokens in this map are rejected by the auth middleware.
+    pub revoked_tokens: Arc<DashMap<String, Instant>>,
 }

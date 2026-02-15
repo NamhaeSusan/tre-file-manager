@@ -343,6 +343,46 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
         == 0
 }
 
+/// Logout handler that accepts the token from either the Authorization header
+/// or the JSON body `{ "token": "..." }`. This dual approach supports both
+/// regular fetch (with Authorization header) and navigator.sendBeacon (body only).
+pub async fn logout(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<Json<serde_json::Value>, AppError> {
+    // Try Authorization header first
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .map(|s| s.to_string())
+        .or_else(|| {
+            // Fallback: read token from JSON body
+            serde_json::from_slice::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|v| v.get("token")?.as_str().map(String::from))
+        });
+
+    let token = match token {
+        Some(t) => t,
+        None => return Ok(Json(serde_json::json!({ "success": true }))),
+    };
+
+    if let Ok(claims) = crate::auth::jwt::verify_token(&state.config.auth.jwt_secret, &token) {
+        state
+            .revoked_tokens
+            .insert(claims.jti.clone(), Instant::now());
+        tracing::info!(
+            "Token revoked for user: {} (jti: {})",
+            claims.sub,
+            claims.jti
+        );
+    }
+
+    Ok(Json(serde_json::json!({ "success": true })))
+}
+
 // WebAuthn registration (requires JWT auth)
 pub async fn webauthn_register_start(
     user: AuthUser,
